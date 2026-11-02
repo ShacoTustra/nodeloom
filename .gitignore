@@ -7,7 +7,7 @@ __pycache__/
 *.db
 *.db-shm
 *.db-wal
-media/
-dist/
+/media/
+/dist/
 config.toml
-data/
+/data/

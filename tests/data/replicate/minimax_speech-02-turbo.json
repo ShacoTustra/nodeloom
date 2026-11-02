@@ -1,0 +1,216 @@
+{
+ "url": "https://replicate.com/minimax/speech-02-turbo",
+ "owner": "minimax",
+ "name": "speech-02-turbo",
+ "description": "Text-to-Audio (T2A) that offers voice synthesis, emotional expression, and multilingual capabilities. Designed for real-time applications with low latency",
+ "visibility": "public",
+ "is_official": true,
+ "run_count": null,
+ "latest_version": {
+  "id": "2cf4a62046dfe92f7fa26eace32c58f70677d0df0fb45d01c7dab54b83641f70",
+  "created_at": "2026-04-20T21:45:25.284290Z",
+  "cog_version": null,
+  "openapi_schema": {
+   "openapi": "3.0.2",
+   "info": {
+    "title": "Cog",
+    "version": "0.1.0"
+   },
+   "components": {
+    "schemas": {
+     "Input": {
+      "type": "object",
+      "title": "Input",
+      "required": [
+       "text"
+      ],
+      "properties": {
+       "text": {
+        "type": "string",
+        "title": "Text",
+        "x-order": 0,
+        "description": "Text to narrate (max 10,000 characters). Use markers like <#0.5#> to insert pauses in seconds."
+       },
+       "pitch": {
+        "type": "integer",
+        "title": "Pitch",
+        "default": 0,
+        "maximum": 12,
+        "minimum": -12,
+        "x-order": 4,
+        "description": "Semitone offset applied to the voice (\u221212 to +12)."
+       },
+       "speed": {
+        "type": "number",
+        "title": "Speed",
+        "default": 1,
+        "maximum": 2,
+        "minimum": 0.5,
+        "x-order": 2,
+        "description": "Speech speed multiplier (0.5\u20132.0). Lower is slower, higher is faster."
+       },
+       "volume": {
+        "type": "number",
+        "title": "Volume",
+        "default": 1,
+        "maximum": 10,
+        "minimum": 0,
+        "x-order": 3,
+        "description": "Relative loudness. 1.0 is default MiniMax gain. Range 0\u201310."
+       },
+       "bitrate": {
+        "enum": [
+         32000,
+         64000,
+         128000,
+         256000
+        ],
+        "type": "integer",
+        "title": "bitrate",
+        "description": "MP3 bitrate in bits per second. Only used when audio_format is mp3.",
+        "default": 128000,
+        "x-order": 8
+       },
+       "channel": {
+        "enum": [
+         "mono",
+         "stereo"
+        ],
+        "type": "string",
+        "title": "channel",
+        "description": "mono for 1 channel (default), stereo for 2 channels.",
+        "default": "mono",
+        "x-order": 10
+       },
+       "emotion": {
+        "enum": [
+         "auto",
+         "happy",
+         "sad",
+         "angry",
+         "fearful",
+         "disgusted",
+         "surprised",
+         "calm",
+         "fluent",
+         "neutral"
+        ],
+        "type": "string",
+        "title": "emotion",
+        "description": "Desired delivery style. Use auto to let MiniMax choose, or pick a specific emotion.",
+        "default": "auto",
+        "x-order": 5
+       },
+       "voice_id": {
+        "type": "string",
+        "title": "Voice Id",
+        "default": "English_Wiselady",
+        "x-order": 1,
+        "description": "Voice to synthesize. Pick any MiniMax system voice (e.g. English_Wiselady, English_Deep-VoicedGentleman) or a voice_id returned by https://replicate.com/minimax/voice-cloning. See the full list of voices in the README."
+       },
+       "sample_rate": {
+        "enum": [
+         8000,
+         16000,
+         22050,
+         24000,
+         32000,
+         44100
+        ],
+        "type": "integer",
+        "title": "sample_rate",
+        "description": "Audio sample rate in Hz.",
+        "default": 32000,
+        "x-order": 7
+       },
+       "audio_format": {
+        "enum": [
+         "mp3",
+         "wav",
+         "flac",
+         "pcm"
+        ],
+        "type": "string",
+        "title": "audio_format",
+        "description": "File format for the generated audio. Choose mp3 for general use, wav/flac for lossless, or pcm for raw bytes.",
+        "default": "mp3",
+        "x-order": 9
+       },
+       "language_boost": {
+        "enum": [
+         "None",
+         "Automatic",
+         "Chinese",
+         "Chinese,Yue",
+         "Cantonese",
+         "English",
+         "Arabic",
+         "Russian",
+         "Spanish",
+         "French",
+         "Portuguese",
+         "German",
+         "Turkish",
+         "Dutch",
+         "Ukrainian",
+         "Vietnamese",
+         "Indonesian",
+         "Japanese",
+         "Italian",
+         "Korean",
+         "Thai",
+         "Polish",
+         "Romanian",
+         "Greek",
+         "Czech",
+         "Finnish",
+         "Hindi",
+         "Bulgarian",
+         "Danish",
+         "Hebrew",
+         "Malay",
+         "Persian",
+         "Slovak",
+         "Swedish",
+         "Croatian",
+         "Filipino",
+         "Hungarian",
+         "Norwegian",
+         "Slovenian",
+         "Catalan",
+         "Nynorsk",
+         "Tamil",
+         "Afrikaans"
+        ],
+        "type": "string",
+        "title": "language_boost",
+        "description": "Optional language hint. Choose Automatic to let MiniMax detect the language, or pick a specific locale.",
+        "default": "None",
+        "x-order": 12
+       },
+       "subtitle_enable": {
+        "type": "boolean",
+        "title": "Subtitle Enable",
+        "default": false,
+        "x-order": 11,
+        "description": "Return MiniMax subtitle metadata with sentence timestamps (non-streaming only)."
+       },
+       "english_normalization": {
+        "type": "boolean",
+        "title": "English Normalization",
+        "default": false,
+        "x-order": 6,
+        "description": "Improve number/date reading for English text (adds a small amount of latency)."
+       }
+      }
+     },
+     "Output": {
+      "type": "string",
+      "title": "Output",
+      "format": "uri"
+     }
+    }
+   }
+  }
+ }
+}

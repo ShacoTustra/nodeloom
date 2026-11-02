@@ -1,0 +1,453 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Queue OpenAPI for fal-ai/elevenlabs/tts/turbo-v2.5",
+  "version": "1.0.0",
+  "description": "The OpenAPI schema for the fal-ai/elevenlabs/tts/turbo-v2.5 queue.",
+  "x-fal-metadata": {
+   "endpointId": "fal-ai/elevenlabs/tts/turbo-v2.5",
+   "category": "text-to-speech",
+   "thumbnailUrl": "https://storage.googleapis.com/falserverless/web-examples/elevenlabs/elevenlabs_thumbnail.webp",
+   "playgroundUrl": "https://fal.ai/models/fal-ai/elevenlabs/tts/turbo-v2.5",
+   "documentationUrl": "https://fal.ai/models/fal-ai/elevenlabs/tts/turbo-v2.5/api",
+   "about": "ElevenLabs Turbo v2.5 model for text-to-speech generation.\n\nHigh quality with lowest latency, ideal for real-time applications.\nSupports 32 languages while maintaining natural voice quality."
+  }
+ },
+ "components": {
+  "securitySchemes": {
+   "apiKeyAuth": {
+    "type": "apiKey",
+    "in": "header",
+    "name": "Authorization",
+    "description": "Fal Key"
+   }
+  },
+  "schemas": {
+   "QueueStatus": {
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "IN_QUEUE",
+       "IN_PROGRESS",
+       "COMPLETED"
+      ]
+     },
+     "request_id": {
+      "type": "string",
+      "description": "The request id."
+     },
+     "response_url": {
+      "type": "string",
+      "description": "The response url."
+     },
+     "status_url": {
+      "type": "string",
+      "description": "The status url."
+     },
+     "cancel_url": {
+      "type": "string",
+      "description": "The cancel url."
+     },
+     "logs": {
+      "type": "object",
+      "description": "The logs.",
+      "additionalProperties": true
+     },
+     "metrics": {
+      "type": "object",
+      "description": "The metrics.",
+      "additionalProperties": true
+     },
+     "queue_position": {
+      "type": "integer",
+      "description": "The queue position."
+     }
+    },
+    "required": [
+     "status",
+     "request_id"
+    ]
+   },
+   "ElevenlabsTtsTurboV25Input": {
+    "properties": {
+     "apply_text_normalization": {
+      "enum": [
+       "auto",
+       "on",
+       "off"
+      ],
+      "default": "auto",
+      "type": "string",
+      "title": "Apply Text Normalization",
+      "description": "This parameter controls text normalization with three modes: 'auto', 'on', and 'off'. When set to 'auto', the system will automatically decide whether to apply text normalization (e.g., spelling out numbers). With 'on', text normalization will always be applied, while with 'off', it will be skipped."
+     },
+     "speed": {
+      "minimum": 0.7,
+      "default": 1,
+      "maximum": 1.2,
+      "type": "number",
+      "title": "Speed",
+      "description": "Speech speed (0.7-1.2). Values below 1.0 slow down the speech, above 1.0 speed it up. Extreme values may affect quality."
+     },
+     "stability": {
+      "minimum": 0,
+      "default": 0.5,
+      "maximum": 1,
+      "type": "number",
+      "title": "Stability",
+      "description": "Voice stability (0-1)"
+     },
+     "next_text": {
+      "description": "The text that comes after the text of the current request. Can be used to improve the speech's continuity when concatenating together multiple generations or to influence the speech's continuity in the current generation.",
+      "title": "Next Text",
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "style": {
+      "minimum": 0,
+      "default": 0,
+      "maximum": 1,
+      "type": "number",
+      "title": "Style",
+      "description": "Style exaggeration (0-1)"
+     },
+     "previous_text": {
+      "description": "The text that came before the text of the current request. Can be used to improve the speech's continuity when concatenating together multiple generations or to influence the speech's continuity in the current generation.",
+      "title": "Previous Text",
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "text": {
+      "minLength": 1,
+      "type": "string",
+      "title": "Text",
+      "examples": [
+       "Hello! This is a test of the text to speech system, powered by ElevenLabs. How does it sound?"
+      ],
+      "description": "The text to convert to speech"
+     },
+     "timestamps": {
+      "default": false,
+      "type": "boolean",
+      "title": "Timestamps",
+      "description": "Whether to return timestamps for each word in the generated speech"
+     },
+     "similarity_boost": {
+      "minimum": 0,
+      "default": 0.75,
+      "maximum": 1,
+      "type": "number",
+      "title": "Similarity Boost",
+      "description": "Similarity boost (0-1)"
+     },
+     "voice": {
+      "default": "Rachel",
+      "type": "string",
+      "title": "Voice",
+      "examples": [
+       "Aria",
+       "Roger",
+       "Sarah",
+       "Laura",
+       "Charlie",
+       "George",
+       "Callum",
+       "River",
+       "Liam",
+       "Charlotte",
+       "Alice",
+       "Matilda",
+       "Will",
+       "Jessica",
+       "Eric",
+       "Chris",
+       "Brian",
+       "Daniel",
+       "Lily",
+       "Bill"
+      ],
+      "description": "The voice to use for speech generation"
+     },
+     "language_code": {
+      "description": "Language code (ISO 639-1) used to enforce a language for the model. An error will be returned if language code is not supported by the model.",
+      "title": "Language Code",
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "x-fal-order-properties": [
+     "text",
+     "voice",
+     "stability",
+     "similarity_boost",
+     "style",
+     "speed",
+     "timestamps",
+     "previous_text",
+     "next_text",
+     "language_code",
+     "apply_text_normalization"
+    ],
+    "type": "object",
+    "title": "TextToSpeechRequest",
+    "required": [
+     "text"
+    ]
+   },
+   "ElevenlabsTtsTurboV25Output": {
+    "properties": {
+     "timestamps": {
+      "description": "Timestamps for each word in the generated speech. Only returned if `timestamps` is set to True in the request.",
+      "title": "Timestamps",
+      "anyOf": [
+       {
+        "type": "array",
+        "items": {}
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "audio": {
+      "$ref": "#/components/schemas/File",
+      "description": "The generated audio file",
+      "examples": [
+       {
+        "url": "https://v3.fal.media/files/zebra/zJL_oRY8h5RWwjoK1w7tx_output.mp3"
+       }
+      ]
+     }
+    },
+    "x-fal-order-properties": [
+     "audio",
+     "timestamps"
+    ],
+    "type": "object",
+    "title": "TTSOutput",
+    "required": [
+     "audio"
+    ]
+   },
+   "File": {
+    "properties": {
+     "content_type": {
+      "description": "The mime type of the file.",
+      "title": "Content Type",
+      "examples": [
+       "image/png"
+      ],
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "url": {
+      "type": "string",
+      "title": "Url",
+      "description": "The URL where the file can be downloaded from."
+     },
+     "file_name": {
+      "description": "The name of the file. It will be auto-generated if not provided.",
+      "title": "File Name",
+      "examples": [
+       "z9RV14K95DvU.png"
+      ],
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "file_size": {
+      "description": "The size of the file in bytes.",
+      "title": "File Size",
+      "examples": [
+       4404019
+      ],
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "x-fal-order-properties": [
+     "url",
+     "content_type",
+     "file_name",
+     "file_size"
+    ],
+    "type": "object",
+    "title": "File",
+    "required": [
+     "url"
+    ]
+   }
+  }
+ },
+ "paths": {
+  "/fal-ai/elevenlabs/tts/turbo-v2.5/requests/{request_id}/status": {
+   "get": {
+    "parameters": [
+     {
+      "name": "request_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "description": "Request ID"
+      }
+     },
+     {
+      "name": "logs",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "description": "Whether to include logs (`1`) in the response or not (`0`)."
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "The request status.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/QueueStatus"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fal-ai/elevenlabs/tts/turbo-v2.5/requests/{request_id}/cancel": {
+   "put": {
+    "parameters": [
+     {
+      "name": "request_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "description": "Request ID"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "The request was cancelled.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "success": {
+           "type": "boolean",
+           "description": "Whether the request was cancelled successfully."
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fal-ai/elevenlabs/tts/turbo-v2.5": {
+   "post": {
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ElevenlabsTtsTurboV25Input"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "The request status.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/QueueStatus"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fal-ai/elevenlabs/tts/turbo-v2.5/requests/{request_id}": {
+   "get": {
+    "parameters": [
+     {
+      "name": "request_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "description": "Request ID"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Result of the request.",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ElevenlabsTtsTurboV25Output"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "servers": [
+  {
+   "url": "https://queue.fal.run"
+  }
+ ],
+ "security": [
+  {
+   "apiKeyAuth": []
+  }
+ ]
+}

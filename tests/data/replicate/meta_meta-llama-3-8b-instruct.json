@@ -1,0 +1,153 @@
+{
+ "url": "https://replicate.com/meta/meta-llama-3-8b-instruct",
+ "owner": "meta",
+ "name": "meta-llama-3-8b-instruct",
+ "description": "An 8 billion parameter language model from Meta, fine tuned for chat completions",
+ "visibility": "public",
+ "is_official": true,
+ "run_count": null,
+ "latest_version": {
+  "id": "a69af66887855969a57f8373241b2e0f73552cd94dd6352b8e882e6fac393ec9",
+  "created_at": "2024-06-20T18:02:08.683049Z",
+  "cog_version": null,
+  "openapi_schema": {
+   "openapi": "3.0.2",
+   "info": {
+    "title": "Cog",
+    "version": "0.1.0"
+   },
+   "components": {
+    "schemas": {
+     "Input": {
+      "type": "object",
+      "title": "Input",
+      "required": [
+       "prompt"
+      ],
+      "properties": {
+       "seed": {
+        "type": "integer",
+        "title": "Seed",
+        "x-order": 10,
+        "description": "Random seed. Leave blank to randomize the seed."
+       },
+       "top_k": {
+        "type": "integer",
+        "title": "Top K",
+        "default": 0,
+        "minimum": -1,
+        "x-order": 6,
+        "description": "When decoding text, samples from the top k most likely tokens; lower to ignore less likely tokens."
+       },
+       "top_p": {
+        "type": "number",
+        "title": "Top P",
+        "default": 0.95,
+        "maximum": 1,
+        "minimum": 0,
+        "x-order": 5,
+        "description": "When decoding text, samples from the top p percentage of most likely tokens; lower to ignore less likely tokens."
+       },
+       "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "x-order": 0,
+        "description": "Prompt to send to the model."
+       },
+       "max_tokens": {
+        "type": "integer",
+        "title": "Max Tokens",
+        "default": 512,
+        "minimum": 1,
+        "x-order": 2,
+        "description": "Maximum number of tokens to generate. A word is generally 2-3 tokens."
+       },
+       "min_tokens": {
+        "type": "integer",
+        "title": "Min Tokens",
+        "minimum": -1,
+        "x-order": 3,
+        "description": "Minimum number of tokens to generate. To disable, set to -1. A word is generally 2-3 tokens."
+       },
+       "temperature": {
+        "type": "number",
+        "title": "Temperature",
+        "default": 0.7,
+        "maximum": 5,
+        "minimum": 0,
+        "x-order": 4,
+        "description": "Adjusts randomness of outputs, greater than 1 is random and 0 is deterministic, 0.75 is a good starting value."
+       },
+       "system_prompt": {
+        "type": "string",
+        "title": "System Prompt",
+        "default": "You are a helpful assistant",
+        "x-order": 1,
+        "description": "System prompt to send to the model. This is prepended to the prompt and helps guide system behavior."
+       },
+       "length_penalty": {
+        "type": "number",
+        "title": "Length Penalty",
+        "default": 1,
+        "maximum": 5,
+        "minimum": 0,
+        "x-order": 8,
+        "description": "A parameter that controls how long the outputs are. If < 1, the model will tend to generate shorter outputs, and > 1 will tend to generate longer outputs."
+       },
+       "max_new_tokens": {
+        "type": "integer",
+        "title": "Max New Tokens",
+        "minimum": 1,
+        "x-order": 13,
+        "description": "This parameter has been renamed to max_tokens. max_new_tokens only exists for backwards compatibility purposes. We recommend you use max_tokens instead. Both may not be specified."
+       },
+       "min_new_tokens": {
+        "type": "integer",
+        "title": "Min New Tokens",
+        "minimum": -1,
+        "x-order": 14,
+        "description": "This parameter has been renamed to min_tokens. min_new_tokens only exists for backwards compatibility purposes. We recommend you use min_tokens instead. Both may not be specified."
+       },
+       "stop_sequences": {
+        "type": "string",
+        "title": "Stop Sequences",
+        "default": "<|end_of_text|>,<|eot_id|>",
+        "x-order": 7,
+        "description": "A comma-separated list of sequences to stop generation at. For example, '<end>,<stop>' will stop generation at the first instance of 'end' or '<stop>'."
+       },
+       "prompt_template": {
+        "type": "string",
+        "title": "Prompt Template",
+        "default": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>",
+        "x-order": 11,
+        "description": "Template for formatting the prompt. Can be an arbitrary string, but must contain the substring `{prompt}`."
+       },
+       "presence_penalty": {
+        "type": "number",
+        "title": "Presence Penalty",
+        "default": 0,
+        "x-order": 9,
+        "description": "A parameter that penalizes repeated tokens regardless of the number of appearances. As the value increases, the model will be less likely to repeat tokens in the output."
+       },
+       "log_performance_metrics": {
+        "type": "boolean",
+        "title": "Log Performance Metrics",
+        "default": false,
+        "x-order": 12
+       }
+      }
+     },
+     "Output": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "title": "Output",
+      "x-cog-array-type": "iterator",
+      "x-cog-array-display": "concatenate"
+     }
+    }
+   }
+  }
+ }
+}
