@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 NOT_CHAT = ("embed", "tts", "whisper", "transcribe", "moderation", "realtime", "dall-e", "davinci", "babbage", "sora",
             "computer-use", "codex", "deep-research", "-pro")
 OPENAI_SEEING = ("gpt-4o", "gpt-4.1", "gpt-5", "o1", "o3", "o4", "chatgpt-4o")
+VIDEO_CAPS = ("supported_durations", "supported_resolutions", "supported_aspect_ratios", "supported_frame_images")
 
 
 class OpenAIProvider(Provider):
@@ -72,7 +73,7 @@ class OpenAIProvider(Provider):
         if not mid:
             return None
         if raw.get("kind") == "video":
-            return self.model(mid, "video")
+            return self.model(mid, "video", caps={k: raw[k] for k in VIDEO_CAPS if raw.get(k)})
         arch = raw.get("architecture")
         if isinstance(arch, dict):  # OpenRouter: modalities and prices per token
             if "text" not in (arch.get("output_modalities") or ["text"]):

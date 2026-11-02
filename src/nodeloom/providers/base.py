@@ -11,7 +11,7 @@ import tempfile
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
 
@@ -44,6 +44,9 @@ class Model:
     family: str  # one of FAMILIES
     inputs: frozenset[str] | None = None  # a chat model's inputs besides text; None: not known (anything may go)
     price: dict | None = None
+    # what a router's video model can do, as its /videos/models says: supported_durations, supported_resolutions,
+    # supported_aspect_ratios, supported_frame_images (nodes.video_problems checks a node's settings against it)
+    caps: dict | None = field(default=None, compare=False, hash=False)
 
     @property
     def value(self) -> str:
@@ -244,7 +247,8 @@ class Provider:
     def guess_kind(self, model_id: str) -> str | None:
         return "chat"
 
-    def model(self, model_id: str, kind: str | None, inputs=None, price: dict | None = None) -> Model | None:
+    def model(self, model_id: str, kind: str | None, inputs=None, price: dict | None = None,
+              caps: dict | None = None) -> Model | None:
         kind = kind or self.guess_kind(model_id)
         family = self.family_of(model_id, kind or "")
         if family is None:
@@ -252,12 +256,14 @@ class Provider:
         if kind != "chat":
             inputs = None
         return Model(self.name, model_id, kind, family,
-                     frozenset(x for x in inputs if x in SENSES) if inputs is not None else None, price or None)
+                     frozenset(x for x in inputs if x in SENSES) if inputs is not None else None, price or None,
+                     caps or None)
 
     def _configured(self, model_id: str, ms: ModelSettings, base: Model | None = None) -> Model | None:
         kind = ms.kind or (base.kind if base else None)
         inputs = ms.inputs if ms.inputs is not None else (sorted(base.inputs) if base and base.inputs is not None else None)
-        return self.model(model_id, kind, inputs, ms.price or (base.price if base else None))
+        return self.model(model_id, kind, inputs, ms.price or (base.price if base else None),
+                          base.caps if base and base.kind == kind else None)
 
     def _from_config(self) -> list[Model]:
         configured = self.settings.models

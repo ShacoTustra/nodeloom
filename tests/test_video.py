@@ -43,7 +43,8 @@ async def venv(monkeypatch, tmp_path):
                                                          "output_modalities": ["text"]}},
             {"id": "google/veo-3.1", "architecture": {"output_modalities": ["video"]}}]})
         mock.get(f"{R}/videos/models").respond(json={"data": [
-            {"id": "google/veo-3.1", "supported_durations": [4, 6, 8], "supported_frame_images": ["first_frame"]},
+            {"id": "google/veo-3.1", "supported_durations": [4, 6, 8], "supported_resolutions": ["720p", "1080p"],
+             "supported_frame_images": ["first_frame"]},
             {"id": "bytedance/seedance-2.0", "supported_durations": [4, 5, 6]}]})
         yield Env(client, mock)
     await client.aclose()
@@ -126,3 +127,23 @@ async def test_a_resumed_run_follows_its_job(venv, tmp_path):
     ctx = Ctx(LOCAL_USER, "1", db.sessionmaker(), progress, pending_task="old")
     values, _ = await nodes.BY_ID["LoomVideo"].run(ctx, model="router/google/veo-3.1", prompt="go")
     assert values[0]["media"] == "video" and not made.called
+
+
+async def test_what_a_model_can_do_is_checked_before_paying(venv):
+    from nodeloom import agent
+    made = venv.mock.post(f"{R}/videos").respond(202, json={"id": "j9"})
+    graph = {"1": {"class_type": "LoomVideo", "inputs": {"model": "router/google/veo-3.1", "prompt": "go",
+                                                         "resolution": "4K"}}}
+    assert await error_of(venv, graph) == "google/veo-3.1: quality must be one of 720p, 1080p (or auto)"
+    assert not made.called
+    # the Builder sees it in the catalog and gets it back from its check
+    caps = await agent.model_caps()
+    assert caps["router/google/veo-3.1"]["supported_durations"] == [4, 6, 8]
+    ch = await providers.choices()
+    assert "    - router/google/veo-3.1: seconds 4, 6, 8; quality 720p, 1080p; frames first_frame" in agent.catalog(ch, caps)
+    pic_graph = {"1": {"class_type": "LoomVideo", "inputs": {"model": "router/google/veo-3.1", "prompt": "go",
+                                                             "duration": 5, "last_frame": ["2", 0]}},
+                 "2": {"class_type": "LoomVideo", "inputs": {"model": "router/bytedance/seedance-2.0", "prompt": "x"}}}
+    errors, _ = agent.check(pic_graph, ch, caps)
+    assert "node 1 (LoomVideo, router/google/veo-3.1): seconds must be one of 4, 6, 8 (or 0: the model's default)" in errors
+    assert "node 1 (LoomVideo, router/google/veo-3.1): this model takes no last frame" in errors

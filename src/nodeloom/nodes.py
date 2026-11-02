@@ -699,6 +699,31 @@ async def run_gemini_video(ctx: Ctx, model: str, prompt: str, first_frame=None, 
     return [clip, [frame]], show_video(clip)
 
 
+def video_problems(caps: dict | None, duration: int = 0, resolution: str = "auto", aspect_ratio: str = "auto",
+                   first: bool = False, last: bool = False) -> list[str]:
+    """What a router's video model would refuse, by what its /videos/models says it can do (the node says the first
+    one; the Builder and agents get them all)."""
+    caps = caps or {}
+    out = []
+    durations = caps.get("supported_durations") or []
+    if duration > 0 and durations and duration not in durations:
+        out.append(i18n.tr(f"секунд можно {', '.join(map(str, durations))} (или 0: как решит модель)",
+                           f"seconds must be one of {', '.join(map(str, durations))} (or 0: the model's default)"))
+    for value, key, ru, en in ((resolution, "supported_resolutions", "качество", "quality"),
+                               (aspect_ratio, "supported_aspect_ratios", "пропорции", "aspect ratio")):
+        allowed = [str(x) for x in caps.get(key) or []]
+        if value != "auto" and allowed and value not in allowed:
+            out.append(i18n.tr(f"{ru}: можно {', '.join(allowed)} (или auto)",
+                               f"{en} must be one of {', '.join(allowed)} (or auto)"))
+    frames = caps.get("supported_frame_images")
+    if frames is not None:
+        if first and "first_frame" not in frames:
+            out.append(i18n.tr("модель не принимает первый кадр", "this model takes no first frame"))
+        if last and "last_frame" not in frames:
+            out.append(i18n.tr("модель не принимает последний кадр", "this model takes no last frame"))
+    return out
+
+
 async def run_video(ctx: Ctx, model: str, prompt: str, first_frame=None, last_frame=None, references=None,
                     duration: int = 0, resolution: str = "auto", aspect_ratio: str = "auto", sound: bool = True,
                     seed: int = 0) -> tuple[list, dict | None]:
@@ -712,6 +737,8 @@ async def run_video(ctx: Ctx, model: str, prompt: str, first_frame=None, last_fr
     if refs and (first or last):
         raise NodeError(i18n.tr("Референсы не сочетаются с первым и последним кадром: оставьте что-то одно",
                                 "References do not go with the first and last frames: keep one or the other"))
+    if problems := video_problems(m.caps, duration, resolution, aspect_ratio, bool(first), bool(last)):
+        raise NodeError(f"{m.id}: {problems[0]}")
     job_id = ctx.pending_task
     if job_id is None:
         body: dict = {"model": m.id, "prompt": prompt}

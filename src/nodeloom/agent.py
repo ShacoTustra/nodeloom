@@ -17,7 +17,7 @@ from collections.abc import AsyncIterator
 
 from nodeloom import engine, i18n, providers
 from nodeloom.config import get_settings
-from nodeloom.nodes import BY_ID, In, all_nodes, available, slot_name
+from nodeloom.nodes import BY_ID, In, all_nodes, available, slot_name, video_problems
 from nodeloom.providers import ProviderError
 from nodeloom.providers.ark import ArkProvider
 
@@ -31,7 +31,9 @@ HEIGHT = {"LoomText": 220, "LoomLoadImage": 360, "LoomSeedanceCharacter": 420, "
           "LoomLoadAudio": 160, "LoomTextModel": 420, "LoomGPTImage": 520, "LoomSeedreamImage": 520,
           "LoomSeedanceVideo": 620, "LoomVideo": 600, "LoomGeminiImage": 480, "LoomGeminiVideo": 640, "LoomVideoFrame": 360,
           "LoomJoinVideos": 420, "LoomJoinText": 260, "LoomShow": 260}
-CHARACTER, VIDEO = "LoomSeedanceCharacter", "LoomSeedanceVideo"
+CHARACTER, VIDEO, ROUTER_VIDEO = "LoomSeedanceCharacter", "LoomSeedanceVideo", "LoomVideo"
+CAPS = (("supported_durations", "seconds"), ("supported_resolutions", "quality"),
+        ("supported_aspect_ratios", "aspect ratio"), ("supported_frame_images", "frames"))
 FILE_INPUTS = ("files:image", "files:video", "files:audio")
 
 
@@ -66,7 +68,14 @@ def _name(en: str, ru: str) -> str:
     return f"“{en}” (in Russian «{ru}»)" if i18n.current() == "ru" and ru else f"“{en}”"
 
 
-def catalog(choices: dict[str, list]) -> str:
+def _caps_line(value: str, caps: dict) -> str:
+    said = [f"{name} {', '.join(map(str, caps[key]))}" for key, name in CAPS if caps.get(key)]
+    return f"    - {value}: " + "; ".join(said)
+
+
+def catalog(choices: dict[str, list], caps: dict[str, dict] | None = None) -> str:
+    """The available nodes for a model to read; `caps`: what the video models can do, by model value."""
+    caps = caps or {}
     lines = []
     for n in all_nodes():
         if not available(n, choices):
@@ -84,6 +93,11 @@ def catalog(choices: dict[str, list]) -> str:
                 opt = "" if many or not i.optional else ", optional"
                 tip = f"; {i.tooltip}" if i.tooltip else ""
                 lines.append(f"    - {i.name} {_name(i.label, i.label_ru)}: {i.type}{many}{opt}{tip}")
+        model = n.input("model")
+        known = [v for v in choices.get(model.options, []) if v in caps] if model and isinstance(model.options, str) else []
+        if known:
+            lines.append("  what each model can do (use only these values):")
+            lines += [_caps_line(v, caps[v]) for v in known]
         if n.outputs:
             lines.append("  outputs: " + ", ".join(f"{k}: {o.type} {_name(o.label, o.label_ru)}"
                                                    for k, o in enumerate(n.outputs)))
@@ -107,6 +121,8 @@ How to work:
   is reused or comes from a text model. Write prompts for the models in English unless the user wants text in
   their language; spoken lines in video prompts go in quotes in the user's language.
 - Use the user's models from the lists above: a model value is "<provider>/<model>", exactly as listed.
+- “Video” (a router's video models): set seconds, quality and aspect ratio only to values the chosen model lists
+  under the node, or leave 0 / auto for the model's default.
 - “Seedance video” takes a first (and a last) frame, or up to 9 references, not both. With a first frame its ratio
   stays adaptive: for a vertical video make the picture vertical (its size). Characters together with a picture: all
   go in as references.
@@ -249,8 +265,9 @@ def compact(prompt: dict) -> list[dict]:
     return out
 
 
-def check(prompt: dict, choices: dict[str, list]) -> tuple[list[str], list[str]]:
-    """Errors the editor would refuse the run with, and notes (files for the user to pick)."""
+def check(prompt: dict, choices: dict[str, list], caps: dict[str, dict] | None = None) -> tuple[list[str], list[str]]:
+    """Errors the editor would refuse the run with (or the model would, by what it can do: `caps` by model value),
+    and notes (files for the user to pick)."""
     errors: list[str] = []
     notes: list[str] = []
     try:
@@ -273,6 +290,12 @@ def check(prompt: dict, choices: dict[str, list]) -> tuple[list[str], list[str]]
             notes.append(f"node {nid} “Seedance character”: no character chosen")
         if n["class_type"] == VIDEO:
             errors += [f"node {nid} ({VIDEO}): {e}" for e in video_rules(n["inputs"])]
+        if n["class_type"] == ROUTER_VIDEO and (c := (caps or {}).get(str(n["inputs"].get("model")))):
+            i = n["inputs"]
+            duration = i.get("duration", 0)
+            errors += [f"node {nid} ({ROUTER_VIDEO}, {i.get('model')}): {e}" for e in video_problems(
+                c, duration if isinstance(duration, int) else 0, str(i.get("resolution", "auto")),
+                str(i.get("aspect_ratio", "auto")), "first_frame" in i, "last_frame" in i)]
     return errors, notes
 
 
@@ -335,6 +358,11 @@ async def search_characters(p: ArkProvider, args: dict) -> dict:
                            for x in found["items"]]}
 
 
+async def model_caps() -> dict[str, dict]:
+    """What each model with known abilities can do (routers' video models), by model value."""
+    return {m.value: m.caps for m in await providers.all_models() if m.caps}
+
+
 def agent_model(chat_models: list[str]) -> str | None:
     return get_settings().agent_model or (chat_models[0] if chat_models else None)
 
@@ -395,7 +423,8 @@ async def run(choices: dict[str, list], messages: list[dict], graph: dict | None
         return
     library = await _library() if choices.get("models:seedance") else None
     known = characters_in(graph)
-    convo = [{"role": "system", "content": SYSTEM.format(catalog=catalog(choices),
+    caps = await model_caps()
+    convo = [{"role": "system", "content": SYSTEM.format(catalog=catalog(choices, caps),
                                                            characters=CHARACTERS if library else "")}]
     for i, t in enumerate(turns):
         text = str(t["text"])[:8000]
@@ -433,7 +462,7 @@ async def run(choices: dict[str, list], messages: list[dict], graph: dict | None
                 args = {}
             if fn.get("name") == "set_graph":
                 prompt, titles, problems = to_prompt(args.get("nodes") or [])
-                errors, notes = check(prompt, choices) if prompt else ([], [])
+                errors, notes = check(prompt, choices, caps) if prompt else ([], [])
                 errors = problems + errors + _check_characters(prompt, known)
                 if errors:
                     result = {"saved": False, "errors": errors}
