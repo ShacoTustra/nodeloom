@@ -53,7 +53,8 @@ TEXT_AUDIO_COUNT, TEXT_AUDIO_MAX = 3, 300.0  # a text model hears up to 3 clips 
 TEXT_VIDEO_COUNT = 2  # and watches up to 2 videos of up to 5 minutes (video_tools.MODEL_VIDEO_MAX_S)
 POLL_SECONDS = 5.0
 TASK_TIMEOUT = 45 * 60
-TASK_STATUS = {"queued": ("в очереди", "queued"), "running": ("генерация", "generating"),
+TASK_STATUS = {"queued": ("в очереди", "queued"), "pending": ("в очереди", "queued"),
+               "running": ("генерация", "generating"),
                "in_progress": ("генерация", "generating"), "completed": ("готово", "done"),
                "succeeded": ("готово", "done"), "failed": ("ошибка", "failed"), "cancelled": ("отменено", "cancelled"),
                "expired": ("истекло", "expired")}
@@ -162,6 +163,12 @@ class Ctx:
                    upload=None) -> dict:
         try:
             return await p.request(method, path, json=body, data=data, files=upload)
+        except ProviderError as e:
+            raise NodeError(str(e)) from None
+
+    async def chat(self, p: Provider, body: dict) -> dict:
+        try:
+            return await p.chat(body)
         except ProviderError as e:
             raise NodeError(str(e)) from None
 
@@ -381,7 +388,7 @@ async def run_text_model(ctx: Ctx, model: str, prompt: str, system: str = "", im
     if max_tokens:
         body[p.max_tokens_key] = max_tokens
     await ctx.progress(i18n.tr("Пишет ответ…", "Writing the answer…"))
-    data = await ctx.call(p, "POST", p.chat_path, body)
+    data = await ctx.chat(p, body)
     ctx.charge(m, data.get("usage"))
     try:
         text = data["choices"][0]["message"].get("content") or ""
@@ -541,20 +548,21 @@ async def _video_audio(ctx: Ctx, m: Model, sounds: list[dict], refs: list, sound
     return parts
 
 
-async def _cancel_quietly(ctx: Ctx, p: Provider, task_id: str) -> None:
+async def _cancel_quietly(ctx: Ctx, p: Provider, task_id: str, path: str = "") -> None:
     try:
-        await ctx.call(p, "DELETE", f"/contents/generations/tasks/{task_id}")
+        await ctx.call(p, "DELETE", path or f"/contents/generations/tasks/{task_id}")
     except NodeError:
         pass
 
 
-async def _gemini_picture(ctx: Ctx, r: dict) -> dict:
+async def _gemini_picture(ctx: Ctx, r: dict) -> tuple[str, str]:
+    """A picture as Gemini takes it: base64 and its type (png, jpeg, webp, heic; anything else made a png)."""
     if r.get("asset"):
         await ctx.data_uri(r)  # says what a character is for
     data, ct = await ctx.read(r), r.get("ct") or "image/png"
     if ct not in ("image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"):
         data, ct = _png(data), "image/png"
-    return gemini.media_part(base64.b64encode(data).decode(), ct)
+    return base64.b64encode(data).decode(), ct
 
 
 async def _gemini_result(ctx: Ctx, p: Provider, part: dict) -> dict | None:
@@ -576,27 +584,34 @@ def _gemini_failed(answer: dict, what_ru: str, what_en: str) -> NodeError:
 
 async def run_gemini_image(ctx: Ctx, model: str, prompt: str, references=None, aspect_ratio: str = "auto",
                            size: str = "auto", seed: int = 0) -> tuple[list, dict | None]:
-    """Nano Banana through the Interactions API: a picture of the description and the references. The model takes
-    no seed: `seed` only makes the node draw again."""
+    """Nano Banana through generateContent: a picture of the description and the references. The model takes no
+    seed: `seed` only makes the node draw again."""
     _prompt(prompt)
     p, m = await ctx.model(model)
     refs = _flat(references)
     if len(refs) > GEMINI_REFERENCES:
         raise NodeError(i18n.tr(f"Не больше {GEMINI_REFERENCES} референсов", f"At most {GEMINI_REFERENCES} references"))
-    parts = [await _gemini_picture(ctx, r) for r in refs] + [{"type": "text", "text": prompt}]
-    fmt: dict = {"type": "image"}
+    parts = [gemini.inline(*await _gemini_picture(ctx, r)) for r in refs] + [{"text": prompt}]
+    image: dict = {}
     if aspect_ratio != "auto":
-        fmt["aspect_ratio"] = aspect_ratio
+        image["aspectRatio"] = aspect_ratio
     if size != "auto":
-        fmt["image_size"] = size
+        image["imageSize"] = size
+    config: dict = {"responseModalities": ["TEXT", "IMAGE"], **({"imageConfig": image} if image else {})}
     await ctx.progress(i18n.tr("Рисует…", "Drawing…"))
-    answer = await ctx.call(p, "POST", "/interactions", {"model": m.id, "input": parts, "response_format": fmt,
-                                                         "store": False})
-    ctx.charge(m, gemini.usage(answer))
-    out = [r for r in [await _gemini_result(ctx, p, x) for x in gemini.output_parts(answer) if x.get("type") == "image"]
-           if r]
+    answer = await ctx.call(p, "POST", f"/models/{m.id}:generateContent",
+                            {"contents": [{"role": "user", "parts": parts}], "generationConfig": config})
+    ctx.charge(m, gemini.native_usage(answer))
+    out = []
+    for part in gemini.native_parts(answer):
+        blob = part.get("inlineData") or {}
+        if str(blob.get("mimeType", "")).startswith("image/") and blob.get("data"):
+            raw = base64.b64decode(blob["data"])
+            out.append(await ctx.save(raw, blob["mimeType"], meta=files.image_meta(raw)))
     if not out:
-        raise _gemini_failed(answer, "Картинка не получена", "No image came back")
+        said = " ".join(x["text"] for x in gemini.native_parts(answer) if isinstance(x.get("text"), str)).strip()
+        why = said[:300] or gemini.native_refusal(answer) or ""
+        raise NodeError(i18n.tr("Картинка не получена", "No image came back") + (f": {why}" if why else ""))
     return [out], show_images(out)
 
 
@@ -623,7 +638,7 @@ async def run_gemini_video(ctx: Ctx, model: str, prompt: str, first_frame=None, 
     interaction_id = ctx.pending_task
     answer: dict = {}
     if interaction_id is None:
-        parts = [await _gemini_picture(ctx, r) for r in first + last + refs]
+        parts = [gemini.media_part(*await _gemini_picture(ctx, r)) for r in first + last + refs]
         if source:
             if (source.get("duration") or 0) > GEMINI_VIDEO_SOURCE_S:
                 raise NodeError(i18n.tr("Видео для правки должно быть не длиннее 10 секунд",
@@ -640,7 +655,15 @@ async def run_gemini_video(ctx: Ctx, model: str, prompt: str, first_frame=None, 
                       "response_format": {"type": "video", "aspect_ratio": aspect_ratio, "resolution": resolution}}
         if task:
             body["generation_config"] = {"video_config": {"task": task}}
-        answer = await ctx.call(p, "POST", "/interactions", body)
+        try:
+            answer = await p.request("POST", "/interactions", json=body)
+        except ProviderError as e:
+            if "404" in str(e) or "Not Found" in str(e):  # a gateway that passes on generateContent only
+                raise NodeError(i18n.tr(f"{p.name} не даёт Interactions API, через который Google делает видео: "
+                                        "нужен ключ Gemini API напрямую",
+                                        f"{p.name} has no Interactions API, which Google's video goes through: use a "
+                                        "Gemini API key directly")) from None
+            raise NodeError(str(e)) from None
         interaction_id = answer.get("id")
         if not interaction_id:
             raise NodeError(i18n.tr(f"{p.name} не вернул номер задачи", f"{p.name} returned no interaction id"))
@@ -674,6 +697,72 @@ async def run_gemini_video(ctx: Ctx, model: str, prompt: str, first_frame=None, 
         raise _gemini_failed(answer, "В готовой задаче нет видео", "The finished task has no video")
     frame = await _frame(ctx, clip, last=True)
     return [clip, [frame]], show_video(clip)
+
+
+async def run_video(ctx: Ctx, model: str, prompt: str, first_frame=None, last_frame=None, references=None,
+                    duration: int = 0, resolution: str = "auto", aspect_ratio: str = "auto", sound: bool = True,
+                    seed: int = 0) -> tuple[list, dict | None]:
+    """A router's video API (OpenRouter, ProxyAPI): POST /videos, the job polled, the file downloaded. The router
+    checks the settings against the model before charging anything. `seed` only makes the node draw again."""
+    _prompt(prompt)
+    p, m = await ctx.model(model)
+    first, last, refs = _flat(first_frame)[:1], _flat(last_frame)[:1], _flat(references)
+    if last and not first:
+        raise NodeError(i18n.tr("Последний кадр задаётся только вместе с первым", "A last frame needs a first frame"))
+    if refs and (first or last):
+        raise NodeError(i18n.tr("Референсы не сочетаются с первым и последним кадром: оставьте что-то одно",
+                                "References do not go with the first and last frames: keep one or the other"))
+    job_id = ctx.pending_task
+    if job_id is None:
+        body: dict = {"model": m.id, "prompt": prompt}
+        frames = [(r, "first_frame") for r in first] + [(r, "last_frame") for r in last]
+        if frames:
+            body["frame_images"] = [{"type": "image_url", "image_url": {"url": await ctx.data_uri(r)}, "frame_type": kind}
+                                    for r, kind in frames]
+        if refs:
+            body["input_references"] = [{"type": "image_url", "image_url": {"url": await ctx.data_uri(r)}}
+                                        for r in refs]
+        if duration > 0:
+            body["duration"] = duration
+        if resolution != "auto":
+            body["resolution"] = resolution
+        if aspect_ratio != "auto":
+            body["aspect_ratio"] = aspect_ratio
+        if not sound:
+            body["generate_audio"] = False
+        job = await ctx.call(p, "POST", "/videos", body)
+        job_id = job.get("id")
+        if not job_id:
+            raise NodeError(i18n.tr(f"{p.name} не вернул номер задачи", f"{p.name} returned no job id"))
+        if ctx.remember_task:
+            await ctx.remember_task(job_id)
+    started = time.monotonic()
+    try:
+        while True:
+            job = await ctx.call(p, "GET", f"/videos/{job_id}")
+            status = job.get("status", "")
+            await ctx.progress(i18n.tr(f"Видео: {_status(status)}, {int(time.monotonic() - started)} с",
+                                        f"Video: {_status(status)}, {int(time.monotonic() - started)} s"))
+            if status == "completed":
+                break
+            if status in ("failed", "cancelled", "expired"):
+                err = job.get("error") or _status(status)
+                raise NodeError(i18n.tr(f"Видео не получилось: {err}", f"The video failed: {err}"))
+            if time.monotonic() - started > TASK_TIMEOUT:
+                raise NodeError(i18n.tr(f"Видео не готово за {TASK_TIMEOUT // 60} минут",
+                                        f"The video is not ready after {TASK_TIMEOUT // 60} minutes"))
+            if ctx.suspending():
+                raise Suspended  # the job id is remembered: the resumed run follows it
+            await asyncio.sleep(POLL_SECONDS)
+    except asyncio.CancelledError:
+        if not ctx.suspending():
+            asyncio.get_running_loop().create_task(_cancel_quietly(ctx, p, job_id, f"/videos/{job_id}"))
+        raise
+    ctx.charge(m, job.get("usage"))
+    urls = job.get("unsigned_urls") or [f"{p.base_url}/videos/{job_id}/content"]
+    video = await ctx.download(p, urls[0])
+    frame = await _frame(ctx, video, last=True)
+    return [video, [frame]], show_video(video)
 
 
 async def _cancel_interaction(ctx: Ctx, p: Provider, interaction_id: str) -> None:
@@ -842,6 +931,40 @@ NODES: list[Node] = [
          search=["llm", "gpt", "chat", "prompt", "текст", "улучшить промпт", "описать"], needs="models:chat",
          title_ru="Текстовая модель", about_ru="Ответ языковой модели: придумать или улучшить описание, описать "
                                                "картинку, перевести."),
+    Node("LoomVideo", "Video", GENERATE,
+         "A video with any video model of your routers (OpenRouter, ProxyAPI): Veo, Kling, Seedance, Wan, Hailuo and "
+         "more. From a description, from the first (and last) frame or from references. Takes minutes.",
+         [_model("video"),
+          In("prompt", "STRING", "description", default="", extra={
+              "multiline": True, "placeholder": "What happens in the shot, camera movement, sound"},
+             label_ru="описание", hint_ru="Что происходит в кадре, движение камеры, звук"),
+          In("first_frame", "IMAGE", "first frame", optional=True, label_ru="первый кадр"),
+          In("last_frame", "IMAGE", "last frame", optional=True, label_ru="последний кадр"),
+          In("references", "IMAGE", "reference", optional=True, grow=4,
+             tooltip="Samples of a character, an object, a style; not together with frames (not every model takes "
+                     "them)",
+             label_ru="референс", tip_ru="Образцы персонажа, предмета, стиля; не вместе с кадрами (принимают не все "
+                                         "модели)"),
+          In("duration", "INT", "seconds", default=0, extra={"min": 0, "max": 60},
+             tooltip="0: the model's default length; each model has lengths of its own",
+             label_ru="секунд", tip_ru="0: длительность по умолчанию для модели; у каждой модели свои варианты"),
+          In("resolution", "COMBO", "quality", default="auto",
+             options=["auto", "480p", "720p", "768p", "1080p", "1K", "2K", "4K"],
+             tooltip="auto: the model's default", label_ru="качество", tip_ru="auto: по умолчанию для модели"),
+          In("aspect_ratio", "COMBO", "aspect ratio", default="auto",
+             options=["auto", "16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "21:9", "9:21"],
+             tooltip="auto: from the frame or the model's default",
+             label_ru="пропорции", tip_ru="auto: по кадру или по умолчанию для модели"),
+          In("sound", "BOOLEAN", "sound", default=True, tooltip="Where the model makes sound",
+             label_ru="звук", tip_ru="Если модель умеет звук"),
+          _variant()],
+         [Out("VIDEO", "video", "видео"), Out("IMAGE", "last frame", "последний кадр")], run_video,
+         output_node=True, cached=True,
+         search=["video", "veo", "kling", "seedance", "wan", "hailuo", "openrouter", "animate", "видео", "ролик", "оживить"],
+         needs="models:video",
+         title_ru="Видео", about_ru="Видео любой видеомоделью ваших роутеров (OpenRouter, ProxyAPI): Veo, Kling, "
+                                    "Seedance, Wan, Hailuo и другие. По описанию, по первому (и последнему) кадру или "
+                                    "по референсам. Занимает минуты."),
     Node("LoomGPTImage", "GPT Image", OPENAI,
          "An image from a description with OpenAI's GPT Image. With references: editing, from a sample, the same "
          "object or character.",

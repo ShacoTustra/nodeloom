@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 # The node families: which nodes list a model. A chat model of any provider goes to the text model node; pictures
 # and video are as many families as there are APIs for them.
-FAMILIES = ("chat", "openai-image", "seedream", "seedance", "gemini-image", "gemini-video")
+FAMILIES = ("chat", "openai-image", "video", "seedream", "seedance", "gemini-image", "gemini-video")
 KINDS = ("chat", "image", "video")
 SENSES = ("image", "audio", "video")  # what a chat model may take in besides text
 REDIRECTS = 5  # a result's link may lead on to the file (Google's downloads do), each hop checked
@@ -83,6 +83,11 @@ class Provider:
     def headers(self) -> dict[str, str]:
         key = self.settings.key()
         return {**({"Authorization": f"Bearer {key}"} if key else {}), **self.settings.headers}
+
+    async def chat(self, body: dict) -> dict:
+        """An OpenAI-style chat request (the text model node's): the API's /chat/completions, or what the provider
+        turns it into."""
+        return await self.request("POST", self.chat_path, json=body)
 
     def headers_for(self, path: str) -> dict[str, str]:
         """The headers of a call of `path` (an API whose parts take the key differently says so here)."""

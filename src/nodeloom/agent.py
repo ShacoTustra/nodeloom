@@ -29,7 +29,7 @@ MAX_HISTORY = 20
 COLUMN = 480  # layout: one column per depth of the graph
 HEIGHT = {"LoomText": 220, "LoomLoadImage": 360, "LoomSeedanceCharacter": 420, "LoomLoadVideo": 360,
           "LoomLoadAudio": 160, "LoomTextModel": 420, "LoomGPTImage": 520, "LoomSeedreamImage": 520,
-          "LoomSeedanceVideo": 620, "LoomGeminiImage": 480, "LoomGeminiVideo": 640, "LoomVideoFrame": 360,
+          "LoomSeedanceVideo": 620, "LoomVideo": 600, "LoomGeminiImage": 480, "LoomGeminiVideo": 640, "LoomVideoFrame": 360,
           "LoomJoinVideos": 420, "LoomJoinText": 260, "LoomShow": 260}
 CHARACTER, VIDEO = "LoomSeedanceCharacter", "LoomSeedanceVideo"
 FILE_INPUTS = ("files:image", "files:video", "files:audio")

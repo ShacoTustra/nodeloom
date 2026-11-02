@@ -48,7 +48,7 @@ The common ones need only an environment variable:
 |---|---|---|
 | `OPENAI_API_KEY` (`OPENAI_BASE_URL`) | OpenAI | Text model, GPT Image |
 | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) | Google's Gemini API (a key from Google AI Studio) | Text model (Gemini, Gemma), Gemini image (Nano Banana), Gemini video (Omni Flash) |
-| `OPENROUTER_API_KEY` | OpenRouter: hundreds of chat models, with prices | Text model |
+| `OPENROUTER_API_KEY` | OpenRouter: hundreds of chat models and dozens of video models, with prices | Text model, Video (Veo, Kling, Seedance, Wan, Hailuo...) |
 | `FAL_KEY` | fal.ai | a node per model: Flux Dev, Flux Pro Kontext, Nano Banana (+ Edit), Qwen Image, Kling 2.1, Veo 3 Fast, Veo 3 Image to Video, Hailuo 02, Wan 2.2, ElevenLabs TTS |
 | `REPLICATE_API_TOKEN` | Replicate | a node per model: Flux Schnell, Flux 2 Pro, Flux Kontext Pro, Nano Banana Pro, Seedream 4, Ideogram v3 Turbo, Recraft v3, Kling 2.5 Turbo Pro, Hailuo 02, Veo 3 Fast, Wan 2.5 I2V, Speech 02 Turbo |
 | `ARK_API_KEY` (`ARK_BASE_URL`) | BytePlus ModelArk (Volcengine Ark with its own base URL) | Text model, Seedream image, Seedance video, Seedance character |
@@ -87,6 +87,8 @@ price = { second = 0.000975 }                                       # or "owner/
 price = { input = 1.5, output = 30.0 }   # Google prices pictures and video by their output tokens
 ```
 
+A gateway that passes Google's own API on (`generateContent`) works as a `google` provider with its `base_url`; Gemini video needs Google's Interactions API, which gateways may not have. A router with OpenRouter's video API (`POST /videos`, `GET /videos/models`) adds its video models to the Video node.
+
 In the nodes a model is `<provider>/<model>`, so the same graph can mix providers. A node whose models no provider has is not offered (and a template that needs it is not listed).
 
 A fal.ai endpoint or a Replicate model becomes a node under *Generate / fal / <category>* or *Generate / Replicate / <category>*: its settings are widgets (the common ones in front, the rest under "Show advanced inputs"), its image, video and audio inputs are links, its results are outputs. Its schema is fetched once and kept in the data directory. Replicate's schemas say of a file output only that it is a link: the node guesses whether it is a picture, a video or a sound from the model's settings and description, and `kind = "video"` (or `image`, `audio`) on the model sets it when the guess is wrong.
@@ -98,7 +100,7 @@ Neither fal.ai nor Replicate reports a price in its answers, and Google reports 
 | Category | Nodes |
 |---|---|
 | Input | Text, Image, Video file, Audio file |
-| Generate | **Text model**: any provider's chat model; images, sound and video as inputs where the model takes them |
+| Generate | **Text model**: any provider's chat model; images, sound and video as inputs where the model takes them. **Video**: any video model of a router's video API (OpenRouter, ProxyAPI): text, first/last frame, references |
 | Generate / OpenAI | **GPT Image**: generation, or editing with up to 16 reference images |
 | Generate / Google | **Gemini image** (Nano Banana: up to 14 references, sizes up to 4K), **Gemini video** (Omni Flash: text, first/last frame, references, or a video of yours edited or extended; with sound) |
 | Generate / ByteDance | **Seedream image** (up to 10 references, series of images), **Seedance video** (text, first/last frame, references, sound), **Seedance character** (ready faces for video) |

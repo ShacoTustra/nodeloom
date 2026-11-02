@@ -85,16 +85,18 @@ The page is served with a CSP that allows only its own origin: no Comfy cloud, r
 ## Providers
 
 A provider is a base URL, a key and a type. `openai` speaks the OpenAI API: `/chat/completions` for the text model
-node, `/images/generations` and `/images/edits` for GPT Image. `google` speaks Google's Gemini API: text through its
-OpenAI-compatible `/openai/chat/completions` (the provider's `chat_path`; the key as a bearer token there and as
-`x-goog-api-key` elsewhere), Nano Banana and Omni through the Interactions API (`POST /interactions`; a video in the
-background, its interaction id remembered and polled). `ark` speaks BytePlus ModelArk: chat, Seedream
+node, `/images/generations` and `/images/edits` for GPT Image, and, where the server is a router with a video API
+(OpenRouter, ProxyAPI), `/videos` for the Video node (its models from `GET /videos/models`). `google` speaks Google's
+Gemini API: text and Nano Banana through `generateContent` (the text model node's request is turned into Google's by
+the provider's `chat`), the Builder through the OpenAI-compatible `/openai/chat/completions` (the provider's
+`chat_path`, for function calling; the key as a bearer token there and as `x-goog-api-key` elsewhere), Omni video
+through the Interactions API (`POST /interactions` in the background, its interaction id remembered and polled). `ark` speaks BytePlus ModelArk: chat, Seedream
 (`/images/generations` with its own parameters), Seedance (`/contents/generations/tasks`), and ready characters from a
 gateway's `/assets`.
 
 Models come from `GET /models` (cached for 10 minutes), completed by the config (`models`, `extra_models`). Each
 model has a kind (chat, image, video) and a family that says which node lists it: every chat model goes to the text
-model node; `openai` images to GPT Image; `google` images to Gemini image, its videos to Gemini video; `ark` images to
+model node; `openai` images to GPT Image, a router's videos to Video; `google` images to Gemini image, its videos to Gemini video; `ark` images to
 Seedream, `ark` videos to Seedance. A node whose family has
 no models is not offered, and a template that needs one is not listed.
 

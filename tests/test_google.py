@@ -1,6 +1,6 @@
-"""Google's Gemini API (mocked): the model list split into the node families, text through the OpenAI-compatible
-endpoint, Nano Banana pictures and Omni video through the Interactions API (the video in the background, followed
-after a restart)."""
+"""Google's Gemini API (mocked): the model list split into the node families, text and Nano Banana pictures through
+generateContent, the Builder through the OpenAI-compatible endpoint, Omni video through the Interactions API (in the
+background, followed after a restart)."""
 
 import base64
 import json
@@ -64,42 +64,62 @@ async def test_the_model_list_goes_to_the_node_families(genv):
     assert by["gemini-image"] == ["gemini-3.1-flash-image", "gemini-nano-banana-2.1"]
     assert by["gemini-video"] == ["gemini-omni-1.1-flash"]  # Imagen and Veo are shut down in the Gemini API
     _, flash = await providers.resolve("google/gemini-3.8-flash")
-    assert flash.takes("image") and flash.takes("audio") and not flash.takes("video")
+    assert flash.takes("image") and flash.takes("audio") and flash.takes("video")
     info = (await genv.client.get("/api/object_info")).json()
-    assert info["LoomGeminiImage"]["input"]["required"]["model"][1]["options"] == [f"google/{m}" for m in by["gemini-image"]]
+    models = info["LoomGeminiImage"]["input"]["required"]["model"][1]["options"]
+    assert models == [f"google/{m}" for m in by["gemini-image"]]
     assert info["LoomGeminiVideo"]["category"] == "Generate/Google"
 
 
-async def test_text_goes_through_the_openai_compatible_endpoint(genv):
-    chat = genv.mock.post(f"{G}/openai/chat/completions").respond(json={
-        "choices": [{"message": {"role": "assistant", "content": "A red fox."}}],
-        "usage": {"prompt_tokens": 10, "completion_tokens": 5}})
+def native_answer(*parts, finish="STOP", **extra):
+    return {"candidates": [{"content": {"role": "model", "parts": list(parts)}, "finishReason": finish}],
+            "usageMetadata": {"promptTokenCount": 300, "candidatesTokenCount": 1120, "thoughtsTokenCount": 100},
+            **extra}
+
+
+async def test_text_goes_through_generate_content(genv, tmp_path):
+    chat = genv.mock.post(f"{G}/models/gemini-3.8-flash:generateContent").respond(json=native_answer(
+        {"text": "thinking...", "thought": True}, {"text": "A red fox "}, {"text": "in the snow."}))
     pic = await upload(genv)
+    clip = await upload(genv, "clip.mp4", mp4(tmp_path), "video/mp4")
     r = await queue(genv, {"1": {"class_type": "LoomLoadImage", "inputs": {"image": pic}},
+                           "3": {"class_type": "LoomLoadVideo", "inputs": {"file": clip}},
                            "2": {"class_type": "LoomTextModel", "inputs": {
-                               "model": "google/gemini-3.8-flash", "prompt": "what is it?", "images.image 1": ["1", 0]}}})
+                               "model": "google/gemini-3.8-flash", "prompt": "what is it?", "system": "Be brief",
+                               "images.image 1": ["1", 0], "video.video 1": ["3", 0], "max_tokens": 200}}})
     assert r.status_code == 200, r.text
     await run_all(genv)
     j = await job(genv, r.json()["prompt_id"])
     assert j["status"] == "completed", j.get("execution_error")
-    assert j["outputs"]["2"]["text"] == ["A red fox."]
+    assert j["outputs"]["2"]["text"] == ["A red fox in the snow."]  # without the thoughts
     sent = chat.calls[0].request
-    assert sent.headers["authorization"] == "Bearer g-key" and "x-goog-api-key" not in sent.headers
+    assert sent.headers["x-goog-api-key"] == "g-key" and "authorization" not in sent.headers
     body = json.loads(sent.content)
-    assert body["model"] == "gemini-3.8-flash" and body["messages"][0]["content"][0]["type"] == "image_url"
+    assert body["systemInstruction"] == {"parts": [{"text": "Be brief"}]}
+    parts = body["contents"][0]["parts"]
+    assert [list(x) for x in parts] == [["inlineData"], ["inlineData"], ["text"]]
+    assert parts[0]["inlineData"]["mimeType"] == "image/png" and parts[1]["inlineData"]["mimeType"] == "video/mp4"
+    assert body["generationConfig"] == {"maxOutputTokens": 200}
 
 
-def picture_answer(**extra):
-    return {"id": "v1_img", "status": "completed", "steps": [
-        {"type": "thought", "content": [{"type": "thought", "text": "..."}]},
-        {"type": "model_output", "content": [
-            {"type": "text", "text": "Here it is"},
-            {"type": "image", "mime_type": "image/png", "data": base64.b64encode(PNG).decode()}]}],
-        "usage": {"total_input_tokens": 300, "total_output_tokens": 1120, "total_thought_tokens": 100}, **extra}
+async def test_a_blocked_prompt_says_why(genv):
+    genv.mock.post(f"{G}/models/gemini-3.8-flash:generateContent").respond(json={
+        "promptFeedback": {"blockReason": "PROHIBITED_CONTENT"}})
+    graph = {"1": {"class_type": "LoomTextModel", "inputs": {"model": "google/gemini-3.8-flash", "prompt": "x"}}}
+    assert await error_of(genv, graph) == "google gave no answer: PROHIBITED_CONTENT"
+
+
+async def test_the_builder_uses_the_openai_compatible_endpoint(genv):
+    p = providers.registry()["google"]
+    route = genv.mock.post(f"{G}/openai/chat/completions").respond(json={"choices": [{"message": {"content": "ok"}}]})
+    await p.request("POST", p.chat_path, json={"model": "gemini-3.8-flash", "messages": [], "tools": []})
+    assert route.calls[0].request.headers["authorization"] == "Bearer g-key"
 
 
 async def test_nano_banana_draws_with_references(genv):
-    made = genv.mock.post(f"{G}/interactions").respond(json=picture_answer())
+    made = genv.mock.post(f"{G}/models/gemini-3.1-flash-image:generateContent").respond(json=native_answer(
+        {"text": "Here it is"}, {"inlineData": {"mimeType": "image/png", "data": base64.b64encode(PNG).decode()},
+                                 "thoughtSignature": "abc"}))
     pic = await upload(genv)
     r = await queue(genv, {"1": {"class_type": "LoomLoadImage", "inputs": {"image": pic}},
                            "2": {"class_type": "LoomGeminiImage", "inputs": {
@@ -110,13 +130,12 @@ async def test_nano_banana_draws_with_references(genv):
     j = await job(genv, r.json()["prompt_id"])
     assert j["status"] == "completed", j.get("execution_error")
     assert len(j["outputs"]["2"]["images"]) == 1
-    sent = made.calls[0].request
-    assert sent.headers["x-goog-api-key"] == "g-key" and "authorization" not in sent.headers
-    body = json.loads(sent.content)
-    assert body["model"] == "gemini-3.1-flash-image" and body["store"] is False
-    assert body["input"][0] == {"type": "image", "mime_type": "image/png", "data": base64.b64encode(PNG).decode()}
-    assert body["input"][1] == {"type": "text", "text": "the cat at night"}
-    assert body["response_format"] == {"type": "image", "aspect_ratio": "16:9", "image_size": "2K"}
+    body = json.loads(made.calls[0].request.content)
+    assert body["contents"][0]["parts"] == [
+        {"inlineData": {"mimeType": "image/png", "data": base64.b64encode(PNG).decode()}},
+        {"text": "the cat at night"}]
+    assert body["generationConfig"] == {"responseModalities": ["TEXT", "IMAGE"],
+                                        "imageConfig": {"aspectRatio": "16:9", "imageSize": "2K"}}
     async with db.sessionmaker()() as s:
         from nodeloom.models import Run
         cost = (await s.get(Run, r.json()["prompt_id"])).extra["loom_costs"]["2"]
@@ -124,11 +143,15 @@ async def test_nano_banana_draws_with_references(genv):
 
 
 async def test_a_refusal_says_why(genv):
-    genv.mock.post(f"{G}/interactions").respond(json={"id": "v1_no", "status": "completed", "steps": [
-        {"type": "model_output", "content": [{"type": "text", "text": "I can't draw real people like that."}]}]})
+    genv.mock.post(f"{G}/models/gemini-3.1-flash-image:generateContent").respond(json=native_answer(
+        {"text": "I can't draw real people like that."}))
     graph = {"1": {"class_type": "LoomGeminiImage", "inputs": {"model": "google/gemini-3.1-flash-image",
                                                                "prompt": "x"}}}
     assert await error_of(genv, graph) == "No image came back: I can't draw real people like that."
+    genv.mock.post(f"{G}/models/gemini-nano-banana-2.1:generateContent").respond(json=native_answer(
+        finish="IMAGE_SAFETY"))
+    graph["1"]["inputs"]["model"] = "google/gemini-nano-banana-2.1"
+    assert await error_of(genv, graph) == "No image came back: IMAGE_SAFETY"
 
 
 def mp4(tmp_path) -> bytes:
@@ -164,6 +187,12 @@ async def test_omni_makes_a_video_in_the_background(genv, tmp_path):
     assert body["background"] is True and body["generation_config"] == {"video_config": {"task": "image_to_video"}}
     assert body["response_format"] == {"type": "video", "aspect_ratio": "9:16", "resolution": "1080p"}
     assert [p["type"] for p in body["input"]] == ["image", "text"]
+
+
+async def test_a_gateway_without_the_interactions_api(genv):
+    genv.mock.post(f"{G}/interactions").respond(404, json={"detail": "Not Found"})
+    graph = {"1": {"class_type": "LoomGeminiVideo", "inputs": {"model": "google/gemini-omni-1.1-flash", "prompt": "go"}}}
+    assert "has no Interactions API" in await error_of(genv, graph)
 
 
 async def test_video_rules_and_failures(genv):
