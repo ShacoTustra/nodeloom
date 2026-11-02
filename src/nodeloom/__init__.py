@@ -15,4 +15,4 @@ uses, without ComfyUI's single queue, shared folders and torch:
 - mcp.py        MCP for agents outside the editor: the same nodes, runs and canvas over /mcp.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

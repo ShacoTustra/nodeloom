@@ -1,6 +1,6 @@
 [project]
 name = "nodeloom"
-version = "0.1.0"
+version = "0.2.0"
 description = "ComfyUI's node editor for models behind APIs (OpenAI, Gemini, OpenRouter, fal.ai, Replicate, ModelArk...): no local inference, no torch, no GPU"
 authors = [
     { name = "Kirill Shamgunov" }
