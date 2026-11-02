@@ -563,6 +563,60 @@ function applyGraph(g) {
   setTimeout(() => { try { app.extensionManager?.command?.execute("Comfy.Canvas.FitView"); } catch { /* none */ } }, 400);
 }
 
+// ---------------------------------------------------------------- agents outside the editor (MCP: mcp.py)
+// An agent puts a graph on the canvas (in a new tab) or reads the one there: the server sends an event with a
+// request id and one editor answers it. With several editor tabs open the visible one answers, the others stand back.
+const answered = new Set();
+const peers = "BroadcastChannel" in globalThis ? new BroadcastChannel("nodeloom-agent") : null;
+if (peers) peers.onmessage = (e) => answered.add(e.data);
+
+async function takeRequest(id) {
+  if (document.visibilityState !== "visible") await new Promise((r) => setTimeout(r, 600));
+  if (answered.has(id)) return false;
+  answered.add(id);
+  peers?.postMessage(id);
+  return true;
+}
+
+function replyToAgent(id, body) {
+  return fetch(api.apiURL(`/nodeloom/editor/reply/${id}`), {
+    method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+function tabName() {
+  const w = app.extensionManager?.workflow?.activeWorkflow;
+  return w?.filename ?? w?.path ?? null;
+}
+
+async function openTab(g) {
+  await app.extensionManager.command.execute("Comfy.NewBlankWorkflow");
+  applyGraph(g);
+  const store = app.extensionManager?.workflow;
+  if (g.name && store?.renameWorkflow) {  // the new tab is a temporary workflow: renamed in place
+    try {
+      await store.renameWorkflow(store.activeWorkflow, `workflows/${g.name.replace(/[\\/:*?"<>|]/g, "_")}.json`);
+    } catch { /* it stays "Untitled" */ }
+  }
+}
+
+function setupAgentBridge() {
+  api.addEventListener("nodeloom.graph", async ({ detail }) => {
+    if (!(await takeRequest(detail.request))) return;
+    try {
+      await openTab(detail);
+      replyToAgent(detail.request, { ok: true, tab: tabName() });
+    } catch (e) {
+      replyToAgent(detail.request, { ok: false, error: String(e?.message ?? e) });
+    }
+  });
+  api.addEventListener("nodeloom.ask_graph", async ({ detail }) => {
+    if (!(await takeRequest(detail.request))) return;
+    replyToAgent(detail.request, { graph: (await graphPrompt()) ?? {}, tab: tabName() });
+  });
+}
+
 function agentRender() {
   const v = AGENT.view;
   if (!v) return;
@@ -712,6 +766,7 @@ app.registerExtension({
     showRunCost();
     setupUploads();
     setupAgent();
+    setupAgentBridge();
     plainErrors();
     checkProviders();
   },

@@ -6,12 +6,13 @@ uses, without ComfyUI's single queue, shared folders and torch:
 
 - api.py        the editor's files, /api/* and /ws, as ComfyUI serves them;
 - nodes.py      the nodes the editor offers: simple inputs, generations through the providers, a few video tools;
-- providers/    who runs the models: OpenAI-compatible APIs and BytePlus ModelArk, from the config;
+- providers/    who runs the models: OpenAI-compatible APIs, Gemini, ModelArk, fal.ai, Replicate;
 - engine.py     checks a graph and runs it: independent branches in parallel, results reused while inputs stay the same;
 - runs.py       the run queue in the database: any process claims pending runs, a dead process's runs resume;
 - bus.py        run events to the user's open editors, across processes (Redis) or in one process;
 - files.py      the user's files (uploads, results) in the media store;
-- agent.py      the Builder: a chat model that builds graphs from a request.
+- agent.py      the Builder: a chat model that builds graphs from a request;
+- mcp.py        MCP for agents outside the editor: the same nodes, runs and canvas over /mcp.
 """
 
 __version__ = "0.1.0"

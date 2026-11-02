@@ -30,6 +30,7 @@ api.py ── runs.py (queue in the DB, dispatcher) ── engine.py (graph, cac
 | `bus.py` | run events to the user's open tabs (Redis pub/sub, or within the process) |
 | `files.py`, `media_store.py` | the user's files and where they are stored |
 | `agent.py` | the Builder: an LLM with `set_graph` that builds graphs |
+| `mcp.py` | MCP for agents outside the editor: the catalog, checks, runs, uploads, the editor's canvas |
 | `web/` | our extension of the editor (`nodeloom.js`, `nodeloom.css`), the loading screen, templates, the starter graph |
 
 ## Runs
@@ -119,6 +120,25 @@ The cost of a node is computed from the `usage` the provider returned and the mo
 OpenRouter's `usage.cost` as it is, otherwise tokens, images, requests and seconds of run time at the configured
 prices. A node that paid without a
 known price makes the run's total a lower bound, and the editor says so.
+
+## MCP
+
+`POST /mcp` speaks MCP's Streamable HTTP without a stream or sessions: each JSON-RPC message (or batch) gets a JSON
+answer, notifications a 202. It is guarded like the editor (the Host check, no cross-site browser requests, JSON
+only) and acts as the local user. The tools take graphs in the Builder's form and reuse its code: `agent.catalog`
+(with uploads named instead of left to the user), `agent.to_prompt` and `agent.check` (the engine's validation and
+the models' abilities), `runs.submit`, then the run's row for its state and outputs; file outputs are links to
+`/api/view` and pictures also come back as small JPEG previews. A call waits for a run up to `wait_seconds` (at most
+300; clients drop calls that take longer than a minute or so), then the agent follows it with `get_run`.
+
+`open_in_editor` and `get_editor_graph` ask the open editor through the run events (`nodeloom.graph`,
+`nodeloom.ask_graph`, with a request id): one editor tab answers at `/api/nodeloom/editor/reply/{request}` (the
+visible one; the others stand back through a BroadcastChannel). It opens the graph with the Builder's `applyGraph` in
+a new tab, renamed as asked, or sends `app.graphToPrompt()` of its canvas. No answer in 5 s: no editor is open.
+The answer must reach the process that asked, as it does with one process.
+
+`nodeloom mcp` (cli.py) is a stdio bridge for clients that start a command: each line goes to `/mcp` (side by side,
+so a long run does not hold up a ping), each answer to stdout; it ignores proxy variables to reach the local server.
 
 ## The Builder
 

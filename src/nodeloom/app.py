@@ -1,4 +1,5 @@
-"""The application: the editor's routes (api.py), the run dispatcher and the hourly cleanup, and the Host check."""
+"""The application: the editor's routes (api.py), MCP for agents (mcp.py), the run dispatcher and the hourly cleanup,
+and the Host check."""
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.responses import PlainTextResponse
 
-from nodeloom import api, bus, db, providers, runs
+from nodeloom import api, bus, db, mcp, providers, runs
 from nodeloom.config import APP_NAME, get_settings
 
 log = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title=APP_NAME, lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    app.include_router(mcp.router)  # before the editor's routes: their catch-all serves files
     app.include_router(api.router)
     app.add_middleware(HostCheck, hosts=get_settings().allowed_hosts)
     return app

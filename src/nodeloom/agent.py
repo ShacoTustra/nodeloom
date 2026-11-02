@@ -40,12 +40,13 @@ FILE_INPUTS = ("files:image", "files:video", "files:audio")
 # ---------------------------------------------------------------- the catalog the model sees
 
 
-def _describe_input(i: In, choices: dict[str, list]) -> str:
+def _describe_input(i: In, choices: dict[str, list], uploads: bool = False) -> str:
     kind = i.type
     if i.type == "COMBO":
         options = choices.get(i.options, []) if isinstance(i.options, str) else list(i.options or [])
         if isinstance(i.options, str) and i.options.startswith("files:"):
-            kind = "file the user uploads (leave empty)"
+            kind = ("the name of an uploaded file (upload_file adds one); uploaded now: "
+                    + (", ".join(map(str, options[:20])) or "none")) if uploads else "file the user uploads (leave empty)"
         else:
             kind = "one of: " + ", ".join(map(str, options[:40])) if options else "COMBO (no options available)"
     lo, hi = i.extra.get("min"), i.extra.get("max")
@@ -73,8 +74,9 @@ def _caps_line(value: str, caps: dict) -> str:
     return f"    - {value}: " + "; ".join(said)
 
 
-def catalog(choices: dict[str, list], caps: dict[str, dict] | None = None) -> str:
-    """The available nodes for a model to read; `caps`: what the video models can do, by model value."""
+def catalog(choices: dict[str, list], caps: dict[str, dict] | None = None, *, uploads: bool = False) -> str:
+    """The available nodes for a model to read; `caps`: what the video models can do, by model value; `uploads`: an
+    agent outside the editor sets files itself (mcp.py), the Builder leaves them to the user."""
     caps = caps or {}
     lines = []
     for n in all_nodes():
@@ -85,7 +87,7 @@ def catalog(choices: dict[str, list], caps: dict[str, dict] | None = None) -> st
         links = [i for i in n.inputs if not i.widget or i.grow]
         if values:
             lines.append("  values:")
-            lines += [f"    - {_describe_input(i, choices)}" for i in values]
+            lines += [f"    - {_describe_input(i, choices, uploads)}" for i in values]
         if links:
             lines.append("  link inputs:")
             for i in links:

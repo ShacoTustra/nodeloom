@@ -125,9 +125,36 @@ Neither fal.ai nor Replicate reports a price in its answers, and Google reports 
 
 Images, video and sound travel between nodes as files; a generating node shows its result on the canvas, and every result lands in the editor's assets panel.
 
+## Agents (MCP)
+
+Nodeloom is also an MCP server: Claude Code, Cursor, Claude Desktop or any MCP client can build and run graphs with the same nodes and models as the editor. An agent reads the catalog, checks and runs a graph, follows the run, uploads input files, puts a graph on your canvas in a new tab or reads the one you have open. Runs made by an agent appear in the editor's queue and results, and reuse earlier results like any other run.
+
+With Nodeloom running:
+
+```bash
+claude mcp add --transport http nodeloom http://127.0.0.1:8188/mcp
+```
+
+A client that starts a command instead (Claude Desktop, Cursor and others) uses `nodeloom mcp`, which forwards to the running server (`--url` for another address):
+
+```json
+{ "mcpServers": { "nodeloom": { "command": "nodeloom", "args": ["mcp"] } } }
+```
+
+| Tool | |
+|---|---|
+| `list_nodes` | the nodes, their settings and links, the models you have (what each video model can do) |
+| `check_graph` | the errors a run would stop at, for free |
+| `run_graph` | run a graph and wait for it; texts, files as links, pictures as previews, the cost |
+| `get_run`, `list_runs`, `cancel_run` | follow, list and stop runs (a video takes minutes) |
+| `upload_file` | a picture, a video or a sound for the file nodes, as base64 or from a public URL |
+| `open_in_editor`, `get_editor_graph` | put a graph on the canvas in a new tab, read the graph you have open |
+
+A graph is the Builder's list of nodes: `{"id": "2", "type": "LoomGeminiImage", "values": {"aspect_ratio": "16:9"}, "links": {"prompt": "1.0"}}`.
+
 ## Security
 
-There is one local user and no sign-in, as in ComfyUI. The server listens on `127.0.0.1` by default and accepts only requests whose `Host` is a local name (`ALLOWED_HOSTS`), so a web page cannot reach it through DNS rebinding; requests that change anything must come from the editor's own pages. To use it over a network, put it behind a reverse proxy with authentication, start it with `--host 0.0.0.0` and add your host name to `ALLOWED_HOSTS`. Your provider keys stay on the server.
+There is one local user and no sign-in, as in ComfyUI. The server listens on `127.0.0.1` by default and accepts only requests whose `Host` is a local name (`ALLOWED_HOSTS`), so a web page cannot reach it through DNS rebinding; requests that change anything must come from the editor's own pages. The MCP endpoint is guarded the same way (local host names, no requests from other sites): anything on your machine that can reach the editor can reach it. To use it over a network, put it behind a reverse proxy with authentication, start it with `--host 0.0.0.0` and add your host name to `ALLOWED_HOSTS`. Your provider keys stay on the server.
 
 ## Settings
 
