@@ -72,8 +72,8 @@ async def test_object_info_lists_our_nodes_and_models(env):
     assert "<title>Nodeloom</title>" in page.text and 'name="application-name"' in page.text
     assert page.headers["content-security-policy"].startswith("default-src 'self'")
     status = (await env.client.get("/api/nodeloom/status")).json()
-    assert status == {"providers": [{"name": "ark", "type": "ark", "models": 5},
-                                    {"name": "openai", "type": "openai", "models": 2}]}
+    assert status == {"providers": [{"name": "ark", "type": "ark", "models": 5, "nodes": 0},
+                                    {"name": "openai", "type": "openai", "models": 2, "nodes": 0}]}
 
 
 async def test_nodes_without_models_are_not_offered(monkeypatch, tmp_path):

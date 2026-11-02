@@ -164,7 +164,7 @@ async function checkProviders() {
         "(или config.toml) и перезапустите. Пока доступны только загрузки и инструменты.",
       "No model providers are configured: set OPENAI_API_KEY, OPENROUTER_API_KEY or ARK_API_KEY (or a config.toml) " +
         "and restart. Until then only uploads and tools are available.");
-    } else if (providers.every((p) => !p.models)) {
+    } else if (providers.every((p) => !p.models && !p.nodes)) {
       detail = tr(`Провайдеры (${providers.map((p) => p.name).join(", ")}) не вернули ни одной модели: проверьте ключи`,
         `The providers (${providers.map((p) => p.name).join(", ")}) returned no models: check the keys`);
     }

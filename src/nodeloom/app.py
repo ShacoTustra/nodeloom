@@ -68,12 +68,15 @@ async def lifespan(app: FastAPI):
                     "[providers.*] in config.toml")
     runs.dispatcher.start()
     cleanup = asyncio.create_task(_cleanup_loop())
+    # the providers' own nodes (fal's schemas) made before the editor first asks for them
+    prefetch = asyncio.create_task(providers.ensure_nodes())
     try:
         yield
     finally:
-        cleanup.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await cleanup
+        for task in (cleanup, prefetch):
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task
         await runs.dispatcher.stop()
         await bus.stop()
         await providers.close()

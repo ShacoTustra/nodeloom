@@ -50,7 +50,9 @@ WORKER = worker_id(socket.gethostname(), os.getpid())
 
 
 async def choices(session: AsyncSession, user_id: str) -> dict[str, list]:
-    """The values of the per-user lists: the providers' models by node family, the user's uploads by type."""
+    """The values of the per-user lists: the providers' models by node family, the user's uploads by type. The
+    providers' own nodes are made (or refreshed) on the way."""
+    await providers.ensure_nodes()
     out: dict[str, list] = await providers.choices()
     for media in files.MEDIA:
         out[f"files:{media}"] = await files.names(session, user_id, "input", media)
@@ -272,6 +274,7 @@ dispatcher = Dispatcher()
 
 
 async def execute(run_id: str, parallel: asyncio.Semaphore | None = None) -> None:
+    await providers.ensure_nodes()  # a run resumed in a fresh process may have nodes of the providers' schemas
     sf = sessionmaker()
     async with sf() as s:
         run = await s.get(Run, run_id)

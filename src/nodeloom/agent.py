@@ -17,7 +17,7 @@ from collections.abc import AsyncIterator
 
 from nodeloom import engine, i18n, providers
 from nodeloom.config import get_settings
-from nodeloom.nodes import BY_ID, NODES, In, available, slot_name
+from nodeloom.nodes import BY_ID, In, all_nodes, available, slot_name
 from nodeloom.providers import ProviderError
 from nodeloom.providers.ark import ArkProvider
 
@@ -67,7 +67,7 @@ def _name(en: str, ru: str) -> str:
 
 def catalog(choices: dict[str, list]) -> str:
     lines = []
-    for n in NODES:
+    for n in all_nodes():
         if not available(n, choices):
             continue
         lines.append(f"\n{n.id} {_name(n.title, n.title_ru)} ({n.category}): {n.description}")

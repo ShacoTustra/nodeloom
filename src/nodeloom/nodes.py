@@ -823,7 +823,21 @@ NODES: list[Node] = [
          title_ru="Показать", about_ru="Показывает то, что пришло на вход: текст, картинки, видео, звук."),
 ]
 
-BY_ID = {n.id: n for n in NODES}
+BY_ID = {n.id: n for n in NODES}  # with the providers' own nodes (set_dynamic)
+_dynamic: list[Node] = []
+
+
+def set_dynamic(made: list[Node]) -> None:
+    """The nodes the providers made of their APIs' schemas (fal), in place of the ones before."""
+    global _dynamic
+    for n in _dynamic:
+        BY_ID.pop(n.id, None)
+    _dynamic = [n for n in made if n.id not in BY_ID]
+    BY_ID.update({n.id: n for n in _dynamic})
+
+
+def all_nodes() -> list[Node]:
+    return NODES + _dynamic
 
 
 def available(node: Node, choices: dict[str, list]) -> bool:
@@ -874,7 +888,7 @@ def slot_name(i: In, k: int) -> str:
 
 def object_info(choices: dict[str, list]) -> dict:
     out = {}
-    for n in NODES:
+    for n in all_nodes():
         if not available(n, choices):
             continue
         required, optional = {}, {}
@@ -905,7 +919,12 @@ def object_info(choices: dict[str, list]) -> dict:
 # ---------------------------------------------------------------- the editor's Russian (GET /api/i18n)
 
 CATEGORY_RU = {"Input": "Ввод", "Generate": "Генерация", "OpenAI": "OpenAI", "ByteDance": "ByteDance",
-               "Video": "Видео", "Text": "Текст"}
+               "Video": "Видео", "Text": "Текст",
+               # fal's categories of models
+               "text-to-image": "текст в картинку", "image-to-image": "картинка в картинку",
+               "text-to-video": "текст в видео", "image-to-video": "картинка в видео",
+               "video-to-video": "видео в видео", "text-to-speech": "текст в речь", "text-to-audio": "текст в звук",
+               "speech-to-text": "речь в текст", "audio-to-audio": "звук в звук"}
 
 
 def i18n_ru() -> dict:
@@ -913,7 +932,7 @@ def i18n_ru() -> dict:
     categories while /object_info keeps the English ones (saved graphs and the slot names of growing inputs stay the
     same in both languages). The slots of growing inputs ("reference 1") are labelled by nodeloom.js."""
     defs = {}
-    for n in NODES:
+    for n in all_nodes():
         inputs: dict[str, dict] = {}
         for i in n.inputs:
             inputs[i.name] = {"name": i.label_ru or i.label, **({"tooltip": i.tip_ru} if i.tip_ru else {})}

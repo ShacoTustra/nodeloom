@@ -3,7 +3,8 @@
 
 # ---------------------------------------------------------------- providers
 # type = "openai": the OpenAI API and what speaks it. type = "ark": BytePlus ModelArk / Volcengine Ark.
-# OPENAI_API_KEY, OPENROUTER_API_KEY and ARK_API_KEY alone also create "openai", "openrouter" and "ark".
+# type = "fal": fal.ai. OPENAI_API_KEY, OPENROUTER_API_KEY, FAL_KEY and ARK_API_KEY alone also create "openai",
+# "openrouter", "fal" and "ark".
 
 [providers.openai]
 type = "openai"
@@ -23,6 +24,18 @@ type = "openai"
 base_url = "https://openrouter.ai/api/v1"
 api_key_env = "OPENROUTER_API_KEY"
 models = ["google/gemini-2.5-flash", "anthropic/claude-sonnet-4.5"]   # OpenRouter lists hundreds: pick yours
+
+[providers.fal]
+type = "fal"
+api_key_env = "FAL_KEY"
+# Every endpoint is a node of its own, made of its API schema. Without `endpoints`: a list of popular ones.
+# price: US$ per request (fal says no price in its answers).
+[providers.fal.endpoints."fal-ai/flux/dev"]
+price = { request = 0.025 }
+[providers.fal.endpoints."fal-ai/nano-banana/edit"]
+[providers.fal.endpoints."fal-ai/kling-video/v2.1/standard/image-to-video"]
+[providers.fal.endpoints."fal-ai/elevenlabs/tts/turbo-v2.5"]
+title = "Voice (ElevenLabs)"
 
 [providers.local]
 type = "openai"

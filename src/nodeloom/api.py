@@ -672,7 +672,8 @@ async def status(user: User = Depends(current_user)):
     out = []
     for p in providers.registry().values():
         models = await p.models()
-        out.append({"name": p.name, "type": p.type, "models": len(models)})
+        made = await p.nodes() if hasattr(p, "nodes") else []
+        out.append({"name": p.name, "type": p.type, "models": len(models), "nodes": len(made)})
     return {"providers": out}
 
 

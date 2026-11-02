@@ -23,7 +23,8 @@ api.py ── runs.py (queue in the DB, dispatcher) ── engine.py (graph, cac
 | `auth.py` | the user: one local user for now, and their language |
 | `api.py` | ComfyUI's routes: the editor's page and files, `/api/*`, `/ws`, templates; our `/api/nodeloom/*` |
 | `nodes.py` | the nodes: their description for `/object_info` and how each runs |
-| `providers/` | who runs the models: `openai` and `ark` types, model lists, costs |
+| `providers/` | who runs the models: `openai`, `ark` and `fal` types, model lists, costs |
+| `schema_nodes.py` | nodes made of a model's OpenAPI schema (fal's endpoints) |
 | `engine.py` | checking a graph (ComfyUI's error format) and running it |
 | `runs.py` | the run queue: submit, claim, heartbeat, recover, cancel, cleanup |
 | `bus.py` | run events to the user's open tabs (Redis pub/sub, or within the process) |
@@ -92,6 +93,13 @@ Models come from `GET /models` (cached for 10 minutes), completed by the config 
 model has a kind (chat, image, video) and a family that says which node lists it: every chat model goes to the text
 model node; `openai` images to GPT Image; `ark` images to Seedream, `ark` videos to Seedance. A node whose family has
 no models is not offered, and a template that needs one is not listed.
+
+`fal` is different: each endpoint has inputs of its own, so each becomes a node of its own (`LoomFal<Endpoint>`),
+made of its OpenAPI schema (`schema_nodes.py`: strings, numbers, enums and booleans are widgets, `*_url` fields are
+links of an image, a video or a sound, `*_urls` growing inputs; `images`, `video`, `audio` and text in the result are
+outputs). The schemas are kept in the data directory and fetched again in the background once a day; the nodes are
+registered next to the static ones (`nodes.set_dynamic`) whenever the model lists are asked for. A run goes through
+fal's queue: the request id is remembered under the node's signature, so a resumed run follows it.
 
 The cost of a node is computed from the `usage` the provider returned and the model's `price` (`providers/pricing.py`):
 OpenRouter's `usage.cost` as it is, otherwise tokens and images at the configured prices. A node that paid without a

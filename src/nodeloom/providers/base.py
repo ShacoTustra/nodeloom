@@ -81,8 +81,8 @@ class Provider:
 
     def client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=httpx.Timeout(self.settings.timeout_s, connect=15),
-                                             trust_env=False)
+            # trust_env: HTTPS_PROXY and the system's certificates apply, as for any client on this machine
+            self._client = httpx.AsyncClient(timeout=httpx.Timeout(self.settings.timeout_s, connect=15))
         return self._client
 
     def files_client(self) -> httpx.AsyncClient:
@@ -122,6 +122,9 @@ class Provider:
             elif isinstance(err, str):
                 msg = err
             msg = msg or (data.get("message") or data.get("detail") if isinstance(data, dict) else None)
+            if isinstance(msg, list):  # FastAPI's (fal's) validation errors: [{"loc": [..., field], "msg"}]
+                msg = "; ".join(f"{(e.get('loc') or ['?'])[-1]}: {e.get('msg')}" if isinstance(e, dict) else str(e)
+                                for e in msg)
         except (ValueError, AttributeError):
             text = body.decode(errors="replace").strip()
             msg = text[:300] if text and not text.startswith("<") else None

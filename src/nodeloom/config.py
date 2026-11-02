@@ -50,14 +50,15 @@ class ModelSettings(BaseModel):
 
     kind: str | None = None  # chat | image | video; guessed from the id when not given
     inputs: list[str] | None = None  # what a chat model takes besides text: image, audio, video
-    # Prices in US dollars, for the cost shown after a run: input / output per million tokens, image per picture
-    # (see providers/pricing.py). Without a price the run shows no cost.
+    # Prices in US dollars, for the cost shown after a run: input / output per million tokens, image per picture,
+    # request per call (see providers/pricing.py). Without a price the run shows no cost.
     price: dict[str, float] | None = None
     title: str | None = None
+    category: str | None = None  # fal: where the node goes in the library (text-to-image, ...), when not the schema's
 
 
 class ProviderSettings(BaseModel):
-    type: str  # openai | ark
+    type: str  # openai | ark | fal
     base_url: str | None = None
     api_key: str | None = None
     api_key_env: str | None = None  # the key from this environment variable instead
@@ -65,6 +66,9 @@ class ProviderSettings(BaseModel):
     models: list[str] | dict[str, ModelSettings] | None = None
     # More models on top of the provider's own list (or settings for some of them).
     extra_models: dict[str, ModelSettings] = Field(default_factory=dict)
+    # fal: the endpoints to make nodes of ("fal-ai/flux/dev", ...), a list or a table {endpoint: {title, price}}.
+    # Not given: a list of popular ones (providers/fal.py).
+    endpoints: list[str] | dict[str, ModelSettings] | None = None
     headers: dict[str, str] = Field(default_factory=dict)
     # Hosts the provider's result files may be downloaded from (video links); the type's own when not given.
     file_hosts: list[str] | None = None
@@ -133,6 +137,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     openrouter_api_key: str | None = None
+    fal_key: str | None = None
     ark_api_key: str | None = None
     ark_base_url: str = "https://ark.ap-southeast.bytepluses.com/api/v3"
 
