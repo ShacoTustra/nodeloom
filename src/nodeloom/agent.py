@@ -29,7 +29,8 @@ MAX_HISTORY = 20
 COLUMN = 480  # layout: one column per depth of the graph
 HEIGHT = {"LoomText": 220, "LoomLoadImage": 360, "LoomSeedanceCharacter": 420, "LoomLoadVideo": 360,
           "LoomLoadAudio": 160, "LoomTextModel": 420, "LoomGPTImage": 520, "LoomSeedreamImage": 520,
-          "LoomSeedanceVideo": 620, "LoomVideoFrame": 360, "LoomJoinVideos": 420, "LoomJoinText": 260, "LoomShow": 260}
+          "LoomSeedanceVideo": 620, "LoomGeminiImage": 480, "LoomGeminiVideo": 640, "LoomVideoFrame": 360,
+          "LoomJoinVideos": 420, "LoomJoinText": 260, "LoomShow": 260}
 CHARACTER, VIDEO = "LoomSeedanceCharacter", "LoomSeedanceVideo"
 FILE_INPUTS = ("files:image", "files:video", "files:audio")
 
@@ -406,7 +407,7 @@ async def run(choices: dict[str, list], messages: list[dict], graph: dict | None
     text = ""
     for _ in range(MAX_STEPS):
         try:
-            answer = await p.request("POST", "/chat/completions", json={
+            answer = await p.request("POST", p.chat_path, json={
                 "model": m.id, "messages": convo, "tools": tools(library is not None)})
         except ProviderError as e:
             log.warning("agent: %s", e)

@@ -166,7 +166,8 @@ async def our_extension(path: str, user: User = Depends(current_user), session: 
     return _static(p, immutable=False)
 
 
-STARTERS = ("starter.json", "starter-openai.json")  # the first whose nodes the user has models for
+# the first whose nodes the user has models for
+STARTERS = ("starter.json", "starter-openai.json", "starter-google.json")
 
 
 def _starter(choices: dict[str, list]) -> Path:

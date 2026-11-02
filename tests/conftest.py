@@ -67,7 +67,8 @@ class Env:
 
 
 def configure(monkeypatch, tmp_path, config_text: str | None = CONFIG, **env) -> None:
-    for name in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "ARK_API_KEY", "LANGUAGE", "AGENT_MODEL", "STORAGE_LIMIT_MB"):
+    for name in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "ARK_API_KEY", "FAL_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
+                 "GOOGLE_API_KEY", "LANGUAGE", "AGENT_MODEL", "STORAGE_LIMIT_MB"):
         monkeypatch.delenv(name, raising=False)
     tmp_path.mkdir(parents=True, exist_ok=True)
     monkeypatch.chdir(tmp_path)

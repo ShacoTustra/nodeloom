@@ -10,8 +10,9 @@ served through /api/i18n in the editor's own format. `run` gets the run context 
 returns the outputs and what the node shows (ComfyUI's "ui"). Nodes whose work costs money or time are `cached`: the
 engine reuses their result while their inputs stay the same.
 
-Generation nodes are per API (the text model node takes every provider's chat models; GPT Image, Seedream and
-Seedance have nodes of their own, see providers/), and a node whose models no provider has is not offered.
+Generation nodes are per API (the text model node takes every provider's chat models; GPT Image, Seedream, Seedance
+and Gemini's pictures and video have nodes of their own, fal's and Replicate's models are nodes made of their
+schemas, see providers/), and a node whose models no provider has is not offered.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from typing import Any
 
 from nodeloom import files, i18n, providers, video_tools
 from nodeloom.providers import Model, Provider, ProviderError
+from nodeloom.providers import google as gemini
 from nodeloom.providers.pricing import cost_micro
 
 log = logging.getLogger(__name__)
@@ -39,6 +41,10 @@ SEED_MAX = 2147483647
 MIN_VIDEO_IMAGE_SIDE = 300  # ModelArk refuses smaller input frames ("expected the height to be at least 300px")
 MAX_REFERENCES = 10
 GPT_IMAGE_REFERENCES = 16
+GEMINI_REFERENCES = 14  # Nano Banana mixes up to 14 pictures
+GEMINI_VIDEO_REFERENCES = 6
+GEMINI_VIDEO_SOURCE_S = 10.5  # Omni edits and extends uploaded videos of up to 10 s
+GEMINI_VIDEO_SOURCE_MB = 20
 # Sound for Seedance (reference_audio, wav/mp3): 2.0 models take up to 3 clips of 2-15 s, 15 s in all, and only with a
 # reference picture or video; 2.5 takes up to 10 clips of 2-30 s, 30 s in all, sound alone too.
 VIDEO_AUDIO = {"count": 3, "min": 2.0, "max": 15.0, "total": 15.0}
@@ -48,6 +54,7 @@ TEXT_VIDEO_COUNT = 2  # and watches up to 2 videos of up to 5 minutes (video_too
 POLL_SECONDS = 5.0
 TASK_TIMEOUT = 45 * 60
 TASK_STATUS = {"queued": ("в очереди", "queued"), "running": ("генерация", "generating"),
+               "in_progress": ("генерация", "generating"), "completed": ("готово", "done"),
                "succeeded": ("готово", "done"), "failed": ("ошибка", "failed"), "cancelled": ("отменено", "cancelled"),
                "expired": ("истекло", "expired")}
 ASSET_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
@@ -374,7 +381,7 @@ async def run_text_model(ctx: Ctx, model: str, prompt: str, system: str = "", im
     if max_tokens:
         body[p.max_tokens_key] = max_tokens
     await ctx.progress(i18n.tr("Пишет ответ…", "Writing the answer…"))
-    data = await ctx.call(p, "POST", "/chat/completions", body)
+    data = await ctx.call(p, "POST", p.chat_path, body)
     ctx.charge(m, data.get("usage"))
     try:
         text = data["choices"][0]["message"].get("content") or ""
@@ -541,6 +548,141 @@ async def _cancel_quietly(ctx: Ctx, p: Provider, task_id: str) -> None:
         pass
 
 
+async def _gemini_picture(ctx: Ctx, r: dict) -> dict:
+    if r.get("asset"):
+        await ctx.data_uri(r)  # says what a character is for
+    data, ct = await ctx.read(r), r.get("ct") or "image/png"
+    if ct not in ("image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"):
+        data, ct = _png(data), "image/png"
+    return gemini.media_part(base64.b64encode(data).decode(), ct)
+
+
+async def _gemini_result(ctx: Ctx, p: Provider, part: dict) -> dict | None:
+    """A picture or a video of an interaction's output, saved as a result."""
+    if part.get("data"):
+        raw = base64.b64decode(part["data"])
+        ct = part.get("mime_type") or (_sniff(raw) if part.get("type") == "image" else "video/mp4")
+        return await ctx.save(raw, ct, meta=files.image_meta(raw) if ct.startswith("image/") else None)
+    if part.get("uri"):
+        return await ctx.download(p, part["uri"])
+    return None
+
+
+def _gemini_failed(answer: dict, what_ru: str, what_en: str) -> NodeError:
+    texts = [x.get("text") for x in gemini.output_parts(answer) if x.get("type") == "text" and x.get("text")]
+    why = gemini.error_text(answer) or (texts[0].strip()[:300] if texts else "")
+    return NodeError(i18n.tr(what_ru, what_en) + (f": {why}" if why else ""))
+
+
+async def run_gemini_image(ctx: Ctx, model: str, prompt: str, references=None, aspect_ratio: str = "auto",
+                           size: str = "auto", seed: int = 0) -> tuple[list, dict | None]:
+    """Nano Banana through the Interactions API: a picture of the description and the references. The model takes
+    no seed: `seed` only makes the node draw again."""
+    _prompt(prompt)
+    p, m = await ctx.model(model)
+    refs = _flat(references)
+    if len(refs) > GEMINI_REFERENCES:
+        raise NodeError(i18n.tr(f"Не больше {GEMINI_REFERENCES} референсов", f"At most {GEMINI_REFERENCES} references"))
+    parts = [await _gemini_picture(ctx, r) for r in refs] + [{"type": "text", "text": prompt}]
+    fmt: dict = {"type": "image"}
+    if aspect_ratio != "auto":
+        fmt["aspect_ratio"] = aspect_ratio
+    if size != "auto":
+        fmt["image_size"] = size
+    await ctx.progress(i18n.tr("Рисует…", "Drawing…"))
+    answer = await ctx.call(p, "POST", "/interactions", {"model": m.id, "input": parts, "response_format": fmt,
+                                                         "store": False})
+    ctx.charge(m, gemini.usage(answer))
+    out = [r for r in [await _gemini_result(ctx, p, x) for x in gemini.output_parts(answer) if x.get("type") == "image"]
+           if r]
+    if not out:
+        raise _gemini_failed(answer, "Картинка не получена", "No image came back")
+    return [out], show_images(out)
+
+
+async def run_gemini_video(ctx: Ctx, model: str, prompt: str, first_frame=None, last_frame=None, references=None,
+                           video=None, with_video: str = "edit", aspect_ratio: str = "16:9", resolution: str = "720p",
+                           seed: int = 0) -> tuple[list, dict | None]:
+    """Gemini Omni through the Interactions API, in the background: from a description, from the first (and last)
+    frame, from references, or a video edited or extended. `seed` only makes the node draw again."""
+    _prompt(prompt)
+    p, m = await ctx.model(model)
+    first, last, refs = _flat(first_frame)[:1], _flat(last_frame)[:1], _flat(references)
+    source = video if isinstance(video, dict) and video else None
+    if refs and (first or last):
+        raise NodeError(i18n.tr("Референсы не сочетаются с первым и последним кадром: оставьте что-то одно",
+                                "References do not go with the first and last frames: keep one or the other"))
+    if last and not first:
+        raise NodeError(i18n.tr("Последний кадр задаётся только вместе с первым", "A last frame needs a first frame"))
+    if source and (first or last):
+        raise NodeError(i18n.tr("Видео для правки не сочетается с кадрами: оставьте что-то одно",
+                                "A video to edit does not go with frames: keep one or the other"))
+    if len(refs) > GEMINI_VIDEO_REFERENCES:
+        raise NodeError(i18n.tr(f"Не больше {GEMINI_VIDEO_REFERENCES} референсов",
+                                f"At most {GEMINI_VIDEO_REFERENCES} references"))
+    interaction_id = ctx.pending_task
+    answer: dict = {}
+    if interaction_id is None:
+        parts = [await _gemini_picture(ctx, r) for r in first + last + refs]
+        if source:
+            if (source.get("duration") or 0) > GEMINI_VIDEO_SOURCE_S:
+                raise NodeError(i18n.tr("Видео для правки должно быть не длиннее 10 секунд",
+                                        "A video to edit or extend should be 10 seconds long at most"))
+            data = await ctx.read(source)
+            if len(data) > GEMINI_VIDEO_SOURCE_MB * 1024 * 1024:
+                raise NodeError(i18n.tr(f"Видео больше {GEMINI_VIDEO_SOURCE_MB} МБ: сожмите или укоротите его",
+                                        f"The video is over {GEMINI_VIDEO_SOURCE_MB} MB: compress or shorten it"))
+            parts.insert(0, gemini.media_part(base64.b64encode(data).decode(), source.get("ct") or "video/mp4"))
+        parts.append({"type": "text", "text": prompt})
+        task = ("image_to_video" if first else ("extend" if with_video == "extend" else "edit") if source
+                else "reference_to_video" if refs else None)
+        body: dict = {"model": m.id, "input": parts, "background": True,
+                      "response_format": {"type": "video", "aspect_ratio": aspect_ratio, "resolution": resolution}}
+        if task:
+            body["generation_config"] = {"video_config": {"task": task}}
+        answer = await ctx.call(p, "POST", "/interactions", body)
+        interaction_id = answer.get("id")
+        if not interaction_id:
+            raise NodeError(i18n.tr(f"{p.name} не вернул номер задачи", f"{p.name} returned no interaction id"))
+        if ctx.remember_task:
+            await ctx.remember_task(interaction_id)
+    started = time.monotonic()
+    try:
+        while answer.get("status") != "completed":
+            answer = await ctx.call(p, "GET", f"/interactions/{interaction_id}")
+            status = answer.get("status", "")
+            await ctx.progress(i18n.tr(f"Видео: {_status(status)}, {int(time.monotonic() - started)} с",
+                                        f"Video: {_status(status)}, {int(time.monotonic() - started)} s"))
+            if status == "completed":
+                break
+            if status in ("failed", "cancelled", "incomplete", "requires_action"):
+                raise _gemini_failed(answer, "Видео не получилось", "The video failed")
+            if time.monotonic() - started > TASK_TIMEOUT:
+                raise NodeError(i18n.tr(f"Видео не готово за {TASK_TIMEOUT // 60} минут",
+                                        f"The video is not ready after {TASK_TIMEOUT // 60} minutes"))
+            if ctx.suspending():
+                raise Suspended  # the interaction id is remembered: the resumed run follows it
+            await asyncio.sleep(POLL_SECONDS)
+    except asyncio.CancelledError:
+        if not ctx.suspending():
+            asyncio.get_running_loop().create_task(_cancel_interaction(ctx, p, interaction_id))
+        raise
+    ctx.charge(m, gemini.usage(answer))
+    part = next((x for x in gemini.output_parts(answer) if x.get("type") == "video"), None)
+    clip = await _gemini_result(ctx, p, part) if part else None
+    if clip is None:
+        raise _gemini_failed(answer, "В готовой задаче нет видео", "The finished task has no video")
+    frame = await _frame(ctx, clip, last=True)
+    return [clip, [frame]], show_video(clip)
+
+
+async def _cancel_interaction(ctx: Ctx, p: Provider, interaction_id: str) -> None:
+    try:
+        await ctx.call(p, "POST", f"/interactions/{interaction_id}/cancel")
+    except NodeError:
+        pass
+
+
 # ---------------------------------------------------------------- video tools (ffmpeg)
 
 
@@ -621,11 +763,13 @@ async def run_show(ctx: Ctx, value=None) -> tuple[list, dict | None]:
 
 # ---------------------------------------------------------------- the list
 
-INPUT, GENERATE, OPENAI, BYTEDANCE, VIDEO_TOOLS, TEXT_TOOLS = (
-    "Input", "Generate", "Generate/OpenAI", "Generate/ByteDance", "Video", "Text")
+INPUT, GENERATE, OPENAI, GOOGLE, BYTEDANCE, VIDEO_TOOLS, TEXT_TOOLS = (
+    "Input", "Generate", "Generate/OpenAI", "Generate/Google", "Generate/ByteDance", "Video", "Text")
 SEEDREAM_SIZES = ["2K", "4K", "2048x2048", "2304x1728", "1728x2304", "2560x1440", "1440x2560",
                   "2496x1664", "1664x2496", "3024x1296", "1024x1024"]
 GPT_IMAGE_SIZES = ["auto", "1024x1024", "1536x1024", "1024x1536"]
+GEMINI_RATIOS = ["auto", "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9", "1:4", "4:1", "1:8",
+                 "8:1"]
 # "fixed": a run with nothing changed reuses the results instead of paying for new ones; another variant is a click
 SEED = dict(min=0, max=SEED_MAX, control_after_generate="fixed")
 
@@ -796,6 +940,62 @@ NODES: list[Node] = [
          title_ru="Персонаж Seedance", about_ru="Готовый персонаж для видео Seedance: одно лицо во всех роликах. "
                                                 "Подключите к первому кадру или референсу ноды «Видео Seedance»."),
 
+    Node("LoomGeminiImage", "Gemini image", GOOGLE,
+         "An image from a description with Google's Nano Banana (Gemini image models). With references: editing, "
+         "from a sample, the same character or object, several pictures in one.",
+         [_model("gemini-image"),
+          In("prompt", "STRING", "description", default="", extra={
+              "multiline": True, "placeholder": "What the image should show, or what to change in the reference"},
+             label_ru="описание", hint_ru="Что должно быть на картинке или что изменить в референсе"),
+          In("references", "IMAGE", "reference", optional=True, grow=GEMINI_REFERENCES,
+             tooltip="Images to edit or take from: characters, objects, a style (up to 14)",
+             label_ru="референс", tip_ru="Картинки для правки или образцы: персонажи, предметы, стиль (до 14)"),
+          In("aspect_ratio", "COMBO", "aspect ratio", default="auto", options=GEMINI_RATIOS,
+             tooltip="auto: as the model decides (from the reference, if there is one)",
+             label_ru="пропорции", tip_ru="auto: как решит модель (по референсу, если он есть)"),
+          In("size", "COMBO", "size", default="auto", options=["auto", "512", "1K", "2K", "4K"],
+             tooltip="auto: 1K; 2K and 4K cost more; 512: Nano Banana 2 only",
+             label_ru="размер", tip_ru="auto: 1K; 2K и 4K дороже; 512: только Nano Banana 2"),
+          _variant()],
+         [Out("IMAGE", "images", "картинки")], run_gemini_image, output_node=True, cached=True,
+         search=["gemini", "nano banana", "google", "image", "edit", "картинка", "рисунок"], needs="models:gemini-image",
+         title_ru="Картинка Gemini", about_ru="Картинка по описанию в Nano Banana от Google (модели Gemini для "
+                                              "картинок). С референсами: правка, по образцу, тот же персонаж или "
+                                              "предмет, несколько картинок в одной."),
+    Node("LoomGeminiVideo", "Gemini video", GOOGLE,
+         "A video with sound with Google's Gemini Omni: from a description, from the first (and last) frame, from "
+         "references, or a video of yours edited or extended. Takes minutes.",
+         [_model("gemini-video"),
+          In("prompt", "STRING", "description", default="", extra={
+              "multiline": True, "placeholder": "What happens in the shot, camera, sound, length; or what to change"},
+             label_ru="описание", hint_ru="Что происходит в кадре, камера, звук, длительность; или что изменить"),
+          In("first_frame", "IMAGE", "first frame", optional=True, label_ru="первый кадр"),
+          In("last_frame", "IMAGE", "last frame", optional=True, label_ru="последний кадр"),
+          In("references", "IMAGE", "reference", optional=True, grow=GEMINI_VIDEO_REFERENCES,
+             tooltip="Samples of characters, objects, a style; not together with frames. In the description: "
+                     "<IMAGE_REF_0>, <IMAGE_REF_1>",
+             label_ru="референс", tip_ru="Образцы персонажей, предметов, стиля; не вместе с кадрами. В описании: "
+                                         "<IMAGE_REF_0>, <IMAGE_REF_1>"),
+          In("video", "VIDEO", "video", optional=True,
+             tooltip="A video of up to 10 s to edit or extend (not together with frames)",
+             label_ru="видео", tip_ru="Видео до 10 с, чтобы изменить или продолжить (не вместе с кадрами)"),
+          In("with_video", "COMBO", "with the video", default="edit", options=["edit", "extend"],
+             tooltip="edit: change what is in it; extend: continue it (up to 10 s more)",
+             label_ru="с видео", options_ru=["изменить", "продолжить"],
+             tip_ru="изменить: поменять то, что в нём; продолжить: снять продолжение (до 10 с)"),
+          In("aspect_ratio", "COMBO", "aspect ratio", default="16:9", options=["16:9", "9:16"],
+             label_ru="пропорции"),
+          In("resolution", "COMBO", "quality", default="720p", options=["360p", "720p", "1080p", "4k"],
+             tooltip="1080p and 4k are upscaled and take longer",
+             label_ru="качество", tip_ru="1080p и 4k: апскейл, дольше"),
+          _variant()],
+         [Out("VIDEO", "video", "видео"), Out("IMAGE", "last frame", "последний кадр")], run_gemini_video,
+         output_node=True, cached=True, search=["gemini", "omni", "veo", "google", "video", "animate", "ролик", "оживить"],
+         needs="models:gemini-video",
+         title_ru="Видео Gemini", about_ru="Видео со звуком в Gemini Omni от Google: по описанию, по первому (и "
+                                           "последнему) кадру, по референсам, или ваше видео — изменить или "
+                                           "продолжить. Занимает минуты."),
+
     Node("LoomVideoFrame", "Frame from video", VIDEO_TOOLS,
          "The first or the last frame of a video: for example, to continue it with the next clip.",
          [In("video", "VIDEO", "video", label_ru="видео"),
@@ -918,13 +1118,14 @@ def object_info(choices: dict[str, list]) -> dict:
 
 # ---------------------------------------------------------------- the editor's Russian (GET /api/i18n)
 
-CATEGORY_RU = {"Input": "Ввод", "Generate": "Генерация", "OpenAI": "OpenAI", "ByteDance": "ByteDance",
-               "Video": "Видео", "Text": "Текст",
-               # fal's categories of models
+CATEGORY_RU = {"Input": "Ввод", "Generate": "Генерация", "OpenAI": "OpenAI", "Google": "Google",
+               "ByteDance": "ByteDance", "fal": "fal", "Replicate": "Replicate", "Video": "Видео", "Text": "Текст",
+               # fal's categories of models (and Replicate's, in the same words)
                "text-to-image": "текст в картинку", "image-to-image": "картинка в картинку",
                "text-to-video": "текст в видео", "image-to-video": "картинка в видео",
                "video-to-video": "видео в видео", "text-to-speech": "текст в речь", "text-to-audio": "текст в звук",
-               "speech-to-text": "речь в текст", "audio-to-audio": "звук в звук"}
+               "speech-to-text": "речь в текст", "audio-to-audio": "звук в звук", "image-to-text": "картинка в текст",
+               "llm": "языковые модели", "other": "другое"}
 
 
 def i18n_ru() -> dict:

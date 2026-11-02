@@ -4,9 +4,12 @@ A provider is a base URL, a key and a dialect (its `type`):
 
 - openai: the OpenAI API and what speaks it (OpenAI, OpenRouter, Groq, DeepSeek, Ollama, LM Studio, vLLM, ...): text
   through /chat/completions, GPT Image pictures through /images/generations and /images/edits;
+- google: the Gemini API: text through its OpenAI-compatible /chat/completions, Nano Banana pictures and Omni video
+  through the Interactions API;
 - ark: BytePlus ModelArk, Volcengine Ark and gateways in front of them: text through /chat/completions, Seedream
   pictures, Seedance video tasks, and ready characters for Seedance where the gateway lists them (/assets);
-- fal: fal.ai's queue; every endpoint is a node of its own, made of the endpoint's OpenAPI schema.
+- fal: fal.ai's queue; every endpoint is a node of its own, made of the endpoint's OpenAPI schema;
+- replicate: Replicate's predictions; every model is a node of its own, made of its version's OpenAPI schema.
 
 In the nodes a model is "<provider>/<model id>". What kind it is (chat, image, video) and what a chat model takes in
 besides text come from the provider's GET /models, completed or replaced by the config. Each node lists the models
@@ -40,8 +43,12 @@ def configured(s: Settings) -> dict[str, ProviderSettings]:
         out["openai"] = ProviderSettings(type="openai", base_url=s.openai_base_url, api_key=s.openai_api_key)
     if s.openrouter_api_key and "openrouter" not in out:
         out["openrouter"] = ProviderSettings(type="openai", base_url=OPENROUTER, api_key=s.openrouter_api_key)
+    if (s.gemini_api_key or s.google_api_key) and "google" not in out:
+        out["google"] = ProviderSettings(type="google", api_key=s.gemini_api_key or s.google_api_key)
     if s.fal_key and "fal" not in out:
         out["fal"] = ProviderSettings(type="fal", api_key=s.fal_key)
+    if s.replicate_api_token and "replicate" not in out:
+        out["replicate"] = ProviderSettings(type="replicate", api_key=s.replicate_api_token)
     if s.ark_api_key and "ark" not in out:
         out["ark"] = ProviderSettings(type="ark", base_url=s.ark_base_url, api_key=s.ark_api_key)
     return out
@@ -50,9 +57,12 @@ def configured(s: Settings) -> dict[str, ProviderSettings]:
 def _build(name: str, ps: ProviderSettings) -> Provider:
     from nodeloom.providers.ark import ArkProvider
     from nodeloom.providers.fal import FalProvider
+    from nodeloom.providers.google import GoogleProvider
     from nodeloom.providers.openai import OpenAIProvider
+    from nodeloom.providers.replicate import ReplicateProvider
 
-    types = {"openai": OpenAIProvider, "ark": ArkProvider, "fal": FalProvider}
+    types = {"openai": OpenAIProvider, "google": GoogleProvider, "ark": ArkProvider, "fal": FalProvider,
+             "replicate": ReplicateProvider}
     if not NAME.match(name):
         raise ValueError(f"provider name {name!r}: lowercase letters, digits, - and _ only")
     if ps.type not in types:
@@ -77,8 +87,8 @@ _nodes_lock = asyncio.Lock()
 
 
 async def ensure_nodes() -> None:
-    """The nodes the providers make of their APIs' schemas (fal), registered with the static ones (each provider keeps
-    them for a few minutes, so this is cheap)."""
+    """The nodes the providers make of their APIs' schemas (fal, Replicate), registered with the static ones (each
+    provider keeps them for a few minutes, so this is cheap)."""
     from nodeloom import nodes
 
     async with _nodes_lock:

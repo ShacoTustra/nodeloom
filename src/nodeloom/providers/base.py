@@ -24,9 +24,10 @@ log = logging.getLogger(__name__)
 
 # The node families: which nodes list a model. A chat model of any provider goes to the text model node; pictures
 # and video are as many families as there are APIs for them.
-FAMILIES = ("chat", "openai-image", "seedream", "seedance")
+FAMILIES = ("chat", "openai-image", "seedream", "seedance", "gemini-image", "gemini-video")
 KINDS = ("chat", "image", "video")
 SENSES = ("image", "audio", "video")  # what a chat model may take in besides text
+REDIRECTS = 5  # a result's link may lead on to the file (Google's downloads do), each hop checked
 MODELS_TTL = 600.0  # the provider's model list is asked again after this long
 RETRY_TTL = 60.0  # and after a failure, sooner
 
@@ -56,7 +57,11 @@ class Provider:
     type: ClassVar[str]
     families: ClassVar[dict[str, str]]  # kind -> family
     default_base_url: ClassVar[str | None] = None
+    # Hosts result files are downloaded from ("example.com": the host and its subdomains); none: any public host.
     default_file_hosts: ClassVar[tuple[str, ...]] = ()
+    # Hosts besides the API's own that want the key with a download (the API's own always gets it).
+    auth_file_hosts: ClassVar[tuple[str, ...]] = ()
+    chat_path: ClassVar[str] = "/chat/completions"  # where its OpenAI-style chat lives
     max_tokens_key: ClassVar[str] = "max_tokens"  # the name /chat/completions takes the answer's length limit by
 
     def __init__(self, name: str, settings: ProviderSettings):
@@ -78,6 +83,10 @@ class Provider:
     def headers(self) -> dict[str, str]:
         key = self.settings.key()
         return {**({"Authorization": f"Bearer {key}"} if key else {}), **self.settings.headers}
+
+    def headers_for(self, path: str) -> dict[str, str]:
+        """The headers of a call of `path` (an API whose parts take the key differently says so here)."""
+        return self.headers()
 
     def client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -101,7 +110,7 @@ class Provider:
         """A call of the provider's API; ProviderError with the provider's own message when it fails."""
         try:
             r = await self.client().request(method, self.base_url + path, json=json, files=files, data=data,
-                                            headers=self.headers())
+                                            headers=self.headers_for(path))
         except httpx.HTTPError as e:
             raise ProviderError(i18n.tr(f"{self.name} не ответил: {type(e).__name__}",
                                         f"{self.name} did not answer: {type(e).__name__}")) from None
@@ -146,30 +155,44 @@ class Provider:
             return False
         if host == httpx.URL(self.base_url).host:
             return True
-        suffixes = tuple(self.settings.file_hosts if self.settings.file_hosts is not None else self.default_file_hosts)
-        if suffixes:
-            return host.endswith(suffixes)
+        hosts = self.settings.file_hosts if self.settings.file_hosts is not None else self.default_file_hosts
+        if hosts:
+            return _within(host, hosts)
         try:  # no list: any public host (never this machine or its network)
             infos = await asyncio.get_running_loop().getaddrinfo(host, u.port or 443)
         except OSError:
             return False
         return all(ipaddress.ip_address(info[4][0]).is_global for info in infos)
 
+    def _file_headers(self, url: str) -> dict[str, str]:
+        host = httpx.URL(url).host or ""
+        if host == httpx.URL(self.base_url).host or _within(host, self.auth_file_hosts):
+            return self.headers()
+        return {}
+
     @asynccontextmanager
     async def download(self, url: str) -> AsyncIterator[tuple[Path, str]]:
         """A generated file from the provider's storage (its links expire) in a temporary file, with its type."""
-        if not await self._allowed(url):
-            raise ProviderError(i18n.tr("Недопустимый адрес файла", "Invalid file address"))
         tmp = Path(tempfile.mkstemp(prefix="loom-")[1])
         try:
-            async with self.files_client().stream("GET", url) as r:
-                if r.status_code != 200:
-                    raise ProviderError(i18n.tr(f"Файл не скачан: HTTP {r.status_code}",
-                                                f"The file was not downloaded: HTTP {r.status_code}"))
-                ct = (r.headers.get("content-type") or "application/octet-stream").split(";")[0].strip()
-                with tmp.open("wb") as f:
-                    async for chunk in r.aiter_bytes():
-                        f.write(chunk)
+            for _ in range(REDIRECTS + 1):
+                if not await self._allowed(url):
+                    raise ProviderError(i18n.tr("Недопустимый адрес файла", "Invalid file address"))
+                async with self.files_client().stream("GET", url, headers=self._file_headers(url)) as r:
+                    if r.is_redirect and r.headers.get("location"):
+                        url = str(r.url.join(r.headers["location"]))
+                        continue
+                    if r.status_code != 200:
+                        raise ProviderError(i18n.tr(f"Файл не скачан: HTTP {r.status_code}",
+                                                    f"The file was not downloaded: HTTP {r.status_code}"))
+                    ct = (r.headers.get("content-type") or "application/octet-stream").split(";")[0].strip()
+                    with tmp.open("wb") as f:
+                        async for chunk in r.aiter_bytes():
+                            f.write(chunk)
+                    break
+            else:
+                raise ProviderError(i18n.tr("Файл не скачан: слишком много переадресаций",
+                                            "The file was not downloaded: too many redirects"))
             yield tmp, ct
         except httpx.HTTPError as e:
             raise ProviderError(i18n.tr(f"Файл не скачан: {type(e).__name__}",
@@ -178,6 +201,10 @@ class Provider:
             tmp.unlink(missing_ok=True)
 
     # ---- models
+
+    def family_of(self, model_id: str, kind: str) -> str | None:
+        """The node family a model of this kind goes to (a provider with two APIs for one kind tells by the id)."""
+        return self.families.get(kind)
 
     async def models(self) -> list[Model]:
         """The provider's models: the config's list, or what GET /models says (asked again every few minutes)."""
@@ -214,7 +241,7 @@ class Provider:
 
     def model(self, model_id: str, kind: str | None, inputs=None, price: dict | None = None) -> Model | None:
         kind = kind or self.guess_kind(model_id)
-        family = self.families.get(kind or "")
+        family = self.family_of(model_id, kind or "")
         if family is None:
             return None
         if kind != "chat":
@@ -242,3 +269,12 @@ class Provider:
             else:
                 by_id.pop(mid, None)
         return list(by_id.values())
+
+
+def _within(host: str, hosts) -> bool:
+    """The host is one of `hosts` or under one of them ("fal.media" lets in v3.fal.media, not evilfal.media)."""
+    for h in hosts:
+        h = h.lstrip(".").lower()
+        if h and (host == h or host.endswith("." + h)):
+            return True
+    return False

@@ -2,9 +2,10 @@
 # Environment variables win over this file. Every section is optional.
 
 # ---------------------------------------------------------------- providers
-# type = "openai": the OpenAI API and what speaks it. type = "ark": BytePlus ModelArk / Volcengine Ark.
-# type = "fal": fal.ai. OPENAI_API_KEY, OPENROUTER_API_KEY, FAL_KEY and ARK_API_KEY alone also create "openai",
-# "openrouter", "fal" and "ark".
+# type = "openai": the OpenAI API and what speaks it. type = "google": Google's Gemini API. type = "ark": BytePlus
+# ModelArk / Volcengine Ark. type = "fal": fal.ai. type = "replicate": Replicate. OPENAI_API_KEY, GEMINI_API_KEY,
+# OPENROUTER_API_KEY, FAL_KEY, REPLICATE_API_TOKEN and ARK_API_KEY alone also create "openai", "google",
+# "openrouter", "fal", "replicate" and "ark".
 
 [providers.openai]
 type = "openai"
@@ -18,6 +19,16 @@ api_key_env = "OPENAI_API_KEY"        # or api_key = "sk-..."
 # generated image (image). Without a price the cost of a run is not shown in full.
 [providers.openai.extra_models."gpt-image-1"]
 price = { input = 5.0, image_input = 10.0, output = 40.0 }
+
+[providers.google]
+type = "google"
+api_key_env = "GEMINI_API_KEY"
+# Gemini text models go to the text model node, Nano Banana to "Gemini image", Omni to "Gemini video" (the id tells).
+# Google prices pictures and video by their output tokens: input / output per million tokens.
+[providers.google.extra_models."gemini-3.1-flash-image"]
+price = { input = 1.5, output = 30.0 }
+[providers.google.extra_models."gemini-omni-1.1-flash"]
+price = { input = 1.5, output = 17.5 }
 
 [providers.openrouter]
 type = "openai"
@@ -36,6 +47,19 @@ price = { request = 0.025 }
 [providers.fal.endpoints."fal-ai/kling-video/v2.1/standard/image-to-video"]
 [providers.fal.endpoints."fal-ai/elevenlabs/tts/turbo-v2.5"]
 title = "Voice (ElevenLabs)"
+
+[providers.replicate]
+type = "replicate"
+api_key_env = "REPLICATE_API_TOKEN"
+# Every model is a node of its own, made of its version's API schema: "owner/name" (an official model, or the latest
+# version of any other), or "owner/name:<version id>" to keep one version. Without `endpoints`: popular ones.
+# price: request (per run), image (per picture), second (per second of run time: community models' hardware price).
+# kind: image | video | audio, when the node takes a model's output for the wrong kind of file.
+[providers.replicate.endpoints."black-forest-labs/flux-schnell"]
+price = { image = 0.003 }
+[providers.replicate.endpoints."kwaivgi/kling-v2.5-turbo-pro"]
+[providers.replicate.endpoints."openai/whisper"]
+price = { second = 0.000975 }
 
 [providers.local]
 type = "openai"

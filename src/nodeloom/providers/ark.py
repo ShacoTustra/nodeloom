@@ -21,7 +21,7 @@ class ArkProvider(Provider):
     type = "ark"
     families = {"chat": "chat", "image": "seedream", "video": "seedance"}
     default_base_url = "https://ark.ap-southeast.bytepluses.com/api/v3"
-    default_file_hosts = (".volces.com", ".bytepluses.com", ".byteplus.com")  # where result links point
+    default_file_hosts = ("volces.com", "bytepluses.com", "byteplus.com")  # where result links point
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

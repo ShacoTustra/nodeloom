@@ -12,7 +12,7 @@ from tests.conftest import OPENAI, start
 WEB = Path(nodes.__file__).parent / "web"
 TEMPLATES = WEB / "templates"
 GRAPHS = sorted(p for p in TEMPLATES.glob("*.json") if p.name not in ("index.json", "ru.json")) + [
-    WEB / "starter.json", WEB / "starter-openai.json", WEB / "starter-empty.json"]
+    WEB / "starter.json", WEB / "starter-openai.json", WEB / "starter-google.json", WEB / "starter-empty.json"]
 
 
 def test_every_template_is_listed_with_its_picture():

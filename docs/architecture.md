@@ -23,8 +23,8 @@ api.py ── runs.py (queue in the DB, dispatcher) ── engine.py (graph, cac
 | `auth.py` | the user: one local user for now, and their language |
 | `api.py` | ComfyUI's routes: the editor's page and files, `/api/*`, `/ws`, templates; our `/api/nodeloom/*` |
 | `nodes.py` | the nodes: their description for `/object_info` and how each runs |
-| `providers/` | who runs the models: `openai`, `ark` and `fal` types, model lists, costs |
-| `schema_nodes.py` | nodes made of a model's OpenAPI schema (fal's endpoints) |
+| `providers/` | who runs the models: `openai`, `google`, `ark`, `fal` and `replicate` types, model lists, costs |
+| `schema_nodes.py` | nodes made of a model's OpenAPI schema (fal's endpoints, Replicate's models) |
 | `engine.py` | checking a graph (ComfyUI's error format) and running it |
 | `runs.py` | the run queue: submit, claim, heartbeat, recover, cancel, cleanup |
 | `bus.py` | run events to the user's open tabs (Redis pub/sub, or within the process) |
@@ -85,24 +85,37 @@ The page is served with a CSP that allows only its own origin: no Comfy cloud, r
 ## Providers
 
 A provider is a base URL, a key and a type. `openai` speaks the OpenAI API: `/chat/completions` for the text model
-node, `/images/generations` and `/images/edits` for GPT Image. `ark` speaks BytePlus ModelArk: chat, Seedream
+node, `/images/generations` and `/images/edits` for GPT Image. `google` speaks Google's Gemini API: text through its
+OpenAI-compatible `/openai/chat/completions` (the provider's `chat_path`; the key as a bearer token there and as
+`x-goog-api-key` elsewhere), Nano Banana and Omni through the Interactions API (`POST /interactions`; a video in the
+background, its interaction id remembered and polled). `ark` speaks BytePlus ModelArk: chat, Seedream
 (`/images/generations` with its own parameters), Seedance (`/contents/generations/tasks`), and ready characters from a
 gateway's `/assets`.
 
 Models come from `GET /models` (cached for 10 minutes), completed by the config (`models`, `extra_models`). Each
 model has a kind (chat, image, video) and a family that says which node lists it: every chat model goes to the text
-model node; `openai` images to GPT Image; `ark` images to Seedream, `ark` videos to Seedance. A node whose family has
+model node; `openai` images to GPT Image; `google` images to Gemini image, its videos to Gemini video; `ark` images to
+Seedream, `ark` videos to Seedance. A node whose family has
 no models is not offered, and a template that needs one is not listed.
 
-`fal` is different: each endpoint has inputs of its own, so each becomes a node of its own (`LoomFal<Endpoint>`),
-made of its OpenAPI schema (`schema_nodes.py`: strings, numbers, enums and booleans are widgets, `*_url` fields are
-links of an image, a video or a sound, `*_urls` growing inputs; `images`, `video`, `audio` and text in the result are
-outputs). The schemas are kept in the data directory and fetched again in the background once a day; the nodes are
-registered next to the static ones (`nodes.set_dynamic`) whenever the model lists are asked for. A run goes through
-fal's queue: the request id is remembered under the node's signature, so a resumed run follows it.
+`fal` and `replicate` are different: each model has inputs of its own, so each becomes a node of its own
+(`LoomFal<Endpoint>`, `LoomReplicate<Owner><Name>`), made of its OpenAPI schema (`schema_nodes.py`: strings, numbers,
+enums and booleans are widgets, fal's `*_url` fields and Replicate's `format: uri` ones are links of an image, a video
+or a sound, lists of them growing inputs; files and text in the result are outputs). What they share is in
+`providers/schemas.py`: the schemas are kept in the data directory and fetched again in the background once a day,
+the nodes are registered next to the static ones (`nodes.set_dynamic`) whenever the model lists are asked for, and the
+request body and the outputs are made the same way. A run goes through fal's queue or as a Replicate prediction
+(official models by name, others by the version their schema came from; files over 256 KB through Replicate's Files
+API): the request or prediction id is remembered under the node's signature, so a resumed run follows it. A
+Replicate output that is just a uri is a picture, a video or a sound as `replicate.guess_media` reads the model's
+settings and description (the config's `kind` overrides it).
+
+Result files are downloaded only from the provider's own hosts (or any public host where the type has no list),
+each redirect checked again; the key goes along only to the API's own host and the type's `auth_file_hosts`.
 
 The cost of a node is computed from the `usage` the provider returned and the model's `price` (`providers/pricing.py`):
-OpenRouter's `usage.cost` as it is, otherwise tokens and images at the configured prices. A node that paid without a
+OpenRouter's `usage.cost` as it is, otherwise tokens, images, requests and seconds of run time at the configured
+prices. A node that paid without a
 known price makes the run's total a lower bound, and the editor says so.
 
 ## The Builder

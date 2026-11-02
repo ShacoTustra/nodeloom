@@ -29,8 +29,8 @@ def test_bad_provider_config_says_what_is_wrong(monkeypatch, tmp_path):
     configure(monkeypatch, tmp_path, '[providers."my/gw"]\ntype = "openai"\n')
     with pytest.raises(ValueError, match="lowercase letters"):
         providers.registry()
-    configure(monkeypatch, tmp_path / "b", '[providers.gw]\ntype = "replicate"\nbase_url = "https://x"\n')
-    with pytest.raises(ValueError, match="unknown type 'replicate'"):
+    configure(monkeypatch, tmp_path / "b", '[providers.gw]\ntype = "comfyui"\nbase_url = "https://x"\n')
+    with pytest.raises(ValueError, match="unknown type 'comfyui'"):
         providers.registry()
 
 

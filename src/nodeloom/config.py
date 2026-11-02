@@ -9,8 +9,8 @@ Providers are configured in the TOML file:
     api_key = "sk-..."            # or api_key_env = "OPENAI_API_KEY"
     models = ["gpt-5-mini"]       # optional: otherwise the provider's GET /models
 
-or, for the common ones, with an environment variable alone: OPENAI_API_KEY, OPENROUTER_API_KEY, ARK_API_KEY
-(see providers/__init__.py).
+or, for the common ones, with an environment variable alone: OPENAI_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY,
+FAL_KEY, REPLICATE_API_TOKEN, ARK_API_KEY (see providers/__init__.py).
 """
 
 from __future__ import annotations
@@ -48,17 +48,20 @@ def default_data_dir() -> Path:
 class ModelSettings(BaseModel):
     """A model of a provider, when the provider's own list says too little (or nothing)."""
 
-    kind: str | None = None  # chat | image | video; guessed from the id when not given
+    # chat | image | video; guessed from the id when not given. Replicate: what the model's output is (image, video,
+    # audio), when its schema says only "a uri" and the guess is wrong.
+    kind: str | None = None
     inputs: list[str] | None = None  # what a chat model takes besides text: image, audio, video
     # Prices in US dollars, for the cost shown after a run: input / output per million tokens, image per picture,
-    # request per call (see providers/pricing.py). Without a price the run shows no cost.
+    # request per call, second per second of run time (see providers/pricing.py). Without a price the run shows no
+    # cost.
     price: dict[str, float] | None = None
     title: str | None = None
-    category: str | None = None  # fal: where the node goes in the library (text-to-image, ...), when not the schema's
+    category: str | None = None  # fal, Replicate: where the node goes in the library (text-to-image, ...)
 
 
 class ProviderSettings(BaseModel):
-    type: str  # openai | ark | fal
+    type: str  # openai | google | ark | fal | replicate
     base_url: str | None = None
     api_key: str | None = None
     api_key_env: str | None = None  # the key from this environment variable instead
@@ -66,8 +69,8 @@ class ProviderSettings(BaseModel):
     models: list[str] | dict[str, ModelSettings] | None = None
     # More models on top of the provider's own list (or settings for some of them).
     extra_models: dict[str, ModelSettings] = Field(default_factory=dict)
-    # fal: the endpoints to make nodes of ("fal-ai/flux/dev", ...), a list or a table {endpoint: {title, price}}.
-    # Not given: a list of popular ones (providers/fal.py).
+    # fal, Replicate: the models to make nodes of ("fal-ai/flux/dev", "black-forest-labs/flux-schnell",
+    # "owner/model:version"), a list or a table {endpoint: {title, price}}. Not given: popular ones of the type.
     endpoints: list[str] | dict[str, ModelSettings] | None = None
     headers: dict[str, str] = Field(default_factory=dict)
     # Hosts the provider's result files may be downloaded from (video links); the type's own when not given.
@@ -137,7 +140,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     openrouter_api_key: str | None = None
+    gemini_api_key: str | None = None
+    google_api_key: str | None = None  # the name Google's own SDKs also read
     fal_key: str | None = None
+    replicate_api_token: str | None = None
     ark_api_key: str | None = None
     ark_base_url: str = "https://ark.ap-southeast.bytepluses.com/api/v3"
 
