@@ -408,6 +408,65 @@ function setupCharacterNode(nodeType) {
   };
 }
 
+// ---------------------------------------------------------------- "Uploads": the user's uploaded files
+// The editor's assets panel lists uploads but deletes them only in Comfy's cloud: this tab shows them with their size
+// and the room they take, deletes them (/api/nodeloom/uploads) and refreshes the file lists of the nodes.
+function formatSize(n) {
+  const units = tr(["Б", "КБ", "МБ", "ГБ"], ["B", "KB", "MB", "GB"]);
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  return `${i ? n.toFixed(n < 10 ? 1 : 0) : n} ${units[i]}`;
+}
+
+function uploadThumb(item) {
+  const src = api.apiURL(`/view?type=input&filename=${encodeURIComponent(item.name)}`);
+  if (item.media === "image") return el("img", { class: "loom-up-thumb", src, loading: "lazy", alt: "" });
+  if (item.media === "video") return el("video", { class: "loom-up-thumb", src, preload: "metadata", muted: "" });
+  return el("div", { class: "loom-up-thumb loom-up-icon" }, el("i", { class: "pi pi-volume-up" }));
+}
+
+async function renderUploads(root) {
+  const box = el("div", { class: "loom-up" });
+  root.replaceChildren(box);
+  let data;
+  try {
+    data = await (await fetch(api.apiURL("/nodeloom/uploads"))).json();
+  } catch {
+    box.replaceChildren(el("div", { class: "loom-up-note" }, tr("Не удалось загрузить список", "Could not load the list")));
+    return;
+  }
+  const used = data.limit
+    ? tr(`${formatSize(data.used)} из ${formatSize(data.limit)}`, `${formatSize(data.used)} of ${formatSize(data.limit)}`)
+    : tr(`Занято ${formatSize(data.used)}`, `${formatSize(data.used)} used`);
+  const remove = async (item) => {
+    if (!confirm(tr(`Удалить «${item.name}»? Результаты, сделанные из него, останутся.`,
+      `Delete “${item.name}”? The results made from it stay.`))) return;
+    const r = await fetch(api.apiURL(`/nodeloom/uploads/${encodeURIComponent(item.name)}`), { method: "DELETE" });
+    if (!r.ok) app.extensionManager.toast?.add({ severity: "error", summary: TITLE, detail: tr("Файл не удалён", "The file was not deleted"), life: 5000 });
+    await renderUploads(root);
+    await app.refreshComboInNodes?.();
+  };
+  const rows = data.items.map((item) => el("div", { class: "loom-up-item" }, uploadThumb(item),
+    el("div", { class: "loom-up-meta" }, el("div", { class: "loom-up-name", title: item.name }, item.name),
+      el("div", { class: "loom-up-size" }, formatSize(item.size))),
+    el("button", { type: "button", class: "loom-up-delete", title: tr("Удалить", "Delete"), "aria-label": tr("Удалить", "Delete"),
+      onclick: () => remove(item) }, el("i", { class: "pi pi-trash" }))));
+  box.replaceChildren(
+    el("div", { class: "loom-up-head" }, el("span", { class: "loom-up-title" }, tr("Загрузки", "Uploads")),
+      el("span", { class: "loom-up-used" }, used)),
+    el("div", { class: "loom-up-list" }, ...(rows.length ? rows : [el("div", { class: "loom-up-note" },
+      tr("Загрузок нет: перетащите файл на холст или выберите его в ноде «Картинка», «Видео-файл» или «Аудио-файл».",
+        "No uploads yet: drop a file on the canvas or pick one in an Image, Video file or Audio file node."))])));
+}
+
+function setupUploads() {
+  app.extensionManager.registerSidebarTab?.({
+    id: "loom-uploads", icon: "pi pi-upload", title: tr("Загрузки", "Uploads"), label: tr("Загрузки", "Uploads"),
+    tooltip: tr("Загруженные файлы: сколько места и удаление", "Uploaded files: the room they take, deleting"),
+    type: "custom", render: (root) => { renderUploads(root); },
+  });
+}
+
 // ---------------------------------------------------------------- errors in plain words
 // The stock editor shows a run's error as a generic phrase, a "ComfyUI Error Report" (versions, arguments, the
 // workflow JSON) and links to Comfy's GitHub and support. Here the generic phrases become the node's own message,
@@ -651,6 +710,7 @@ app.registerExtension({
     trimCanvasMenu();
     trimWorkflowMenu();
     showRunCost();
+    setupUploads();
     setupAgent();
     plainErrors();
     checkProviders();

@@ -479,3 +479,20 @@ def test_a_character_shown_is_not_a_job_preview():
     assert _preview({"7": {"images": [character]}}) == (0, None)
     count, preview = _preview({"7": {"images": [character]}, "9": {"images": [{**character, "type": "output"}]}})
     assert count == 1 and preview["nodeId"] == "9" and preview["type"] == "output"
+
+
+async def test_uploads_are_listed_and_deleted(env, monkeypatch):
+    monkeypatch.setattr("nodeloom.files.limit", lambda: 10 * 1024 * 1024)
+    await upload(env, "a.png")
+    await upload(env, "b.png")
+    data = (await env.client.get("/api/nodeloom/uploads")).json()
+    assert [(x["name"], x["media"], x["size"]) for x in data["items"]] == [("b.png", "image", len(PNG)),
+                                                                            ("a.png", "image", len(PNG))]
+    assert data["used"] == 2 * len(PNG) and data["limit"] == 10 * 1024 * 1024
+    assert (await env.client.delete("/api/nodeloom/uploads/a.png", headers={"Origin": "https://evil.example"})
+            ).status_code == 403
+    assert (await env.client.delete("/api/nodeloom/uploads/a.png", headers=SAME)).json() == {"freed": len(PNG)}
+    assert (await env.client.delete("/api/nodeloom/uploads/a.png", headers=SAME)).status_code == 404
+    assert (await env.client.get("/api/view", params={"filename": "a.png", "type": "input"})).status_code == 404
+    data = (await env.client.get("/api/nodeloom/uploads")).json()
+    assert [x["name"] for x in data["items"]] == ["b.png"] and data["used"] == len(PNG)

@@ -676,6 +676,28 @@ async def status(user: User = Depends(current_user)):
     return {"providers": out}
 
 
+@router.get("/api/nodeloom/uploads")
+async def uploads(user: User = Depends(current_user), session: AsyncSession = Depends(get_session)):
+    """The user's uploads, newest first, and the room their files take (the "Uploads" tab: the editor's own assets
+    panel deletes imported files only in Comfy's cloud)."""
+    rows = (await session.execute(select(StoredFile).where(StoredFile.user_id == user.id, StoredFile.kind == "input")
+                                  .order_by(StoredFile.created_at.desc()))).scalars()
+    items = [{"name": f.name, "media": files.media_of(f.content_type), "size": f.size, "created": _ms(f.created_at)}
+             for f in rows]
+    return {"items": items, "used": await files.used(session, user.id), "limit": files.limit()}
+
+
+@router.delete("/api/nodeloom/uploads/{name:path}")
+async def delete_upload(name: str, user: User = Depends(current_user), session: AsyncSession = Depends(get_session)):
+    """Delete an upload; the results made from it stay in the results gallery."""
+    f = await files.get(session, user.id, "input", name)
+    if f is None:
+        return Response(status_code=404)
+    freed = await files.delete(session, [f])
+    await session.commit()
+    return {"freed": freed}
+
+
 @router.get("/api/nodeloom/assets")
 async def assets(gender: str | None = None, age_min: int | None = None, age_max: int | None = None,
                  q: str | None = None, offset: int = 0, limit: int = 60, user: User = Depends(current_user)):
