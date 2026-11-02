@@ -16,6 +16,9 @@ ROUTER = f"""
 type = "openai"
 base_url = "{R}"
 api_key = "or-key"
+
+[providers.router.extra_models."bytedance/seedance-2.0"]
+price = {{ second = 0.09 }}
 """
 
 
@@ -96,6 +99,18 @@ async def test_settings_left_to_the_model_and_failures(venv):
              "2": {"class_type": "LoomVideo", "inputs": {"model": "router/google/veo-3.1", "prompt": "go",
                                                          "last_frame": ["1", 0]}}}
     assert await error_of(venv, graph) == "A last frame needs a first frame"
+
+
+async def test_without_the_routers_cost_the_price_per_second(venv, tmp_path):
+    venv.mock.post(f"{R}/videos").respond(202, json={"id": "j3", "status": "pending"})
+    venv.mock.get(f"{R}/videos/j3").respond(json={"id": "j3", "status": "completed"})  # no usage, no urls
+    venv.mock.get(f"{R}/videos/j3/content").respond(content=mp4(tmp_path), headers={"content-type": "video/mp4"})
+    r = await queue(venv, {"1": {"class_type": "LoomVideo", "inputs": {"model": "router/bytedance/seedance-2.0",
+                                                                       "prompt": "go", "duration": 5}}})
+    await run_all(venv)
+    async with db.sessionmaker()() as s:
+        from nodeloom.models import Run
+        assert (await s.get(Run, r.json()["prompt_id"])).extra["loom_costs"]["1"] == 450_000  # 5 s at $0.09
 
 
 async def test_a_resumed_run_follows_its_job(venv, tmp_path):

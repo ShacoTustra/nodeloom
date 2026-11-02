@@ -1,8 +1,8 @@
 """What a call cost, in micro-dollars, from the usage the provider reported and the model's price.
 
 Prices are US dollars: `input`, `output` and `image_input` per million tokens, `image` per generated picture,
-`request` per call (fal's and Replicate's nodes), `second` per second of the model's run time (Replicate's community
-models, priced by their hardware). Since a micro-dollar is a millionth of a dollar, tokens times dollars per million
+`request` per call (fal's and Replicate's nodes), `second` per second: of the model's run time on Replicate (its
+community models are priced by their hardware), of the video made by a router's video model. Since a micro-dollar is a millionth of a dollar, tokens times dollars per million
 tokens is already micro-dollars.
 """
 
@@ -32,7 +32,8 @@ def cost_micro(price: dict | None, usage: dict | None) -> int | None:
       `output`;
     - Seedream: generated_images at `image` (or output_tokens at `output`); Seedance: completion_tokens at `output`;
     - Gemini: input_tokens / output_tokens (thinking included) at `input` / `output`;
-    - fal, Replicate: requests at `request`, generated_images at `image`, seconds (run time) at `second`.
+    - fal, Replicate: requests at `request`, generated_images at `image`, seconds (run time) at `second`;
+    - a router's video: its usage.cost, else seconds of video at `second`.
     """
     usage = usage if isinstance(usage, dict) else {}
     if isinstance(usage.get("cost"), (int, float)) and not isinstance(usage.get("cost"), bool):

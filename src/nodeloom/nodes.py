@@ -758,9 +758,10 @@ async def run_video(ctx: Ctx, model: str, prompt: str, first_frame=None, last_fr
         if not ctx.suspending():
             asyncio.get_running_loop().create_task(_cancel_quietly(ctx, p, job_id, f"/videos/{job_id}"))
         raise
-    ctx.charge(m, job.get("usage"))
     urls = job.get("unsigned_urls") or [f"{p.base_url}/videos/{job_id}/content"]
     video = await ctx.download(p, urls[0])
+    # the router's cost when it says one (OpenRouter), else the model's price per second of video
+    ctx.charge(m, {**(job.get("usage") or {}), "seconds": duration if duration > 0 else await _seconds(ctx, video)})
     frame = await _frame(ctx, video, last=True)
     return [video, [frame]], show_video(video)
 
@@ -799,6 +800,18 @@ async def _frame(ctx: Ctx, video: dict, last: bool) -> dict:
             await _ffmpeg("-i", str(src), "-frames:v", "1", str(dst))
         raw = dst.read_bytes()
         return await ctx.save(raw, "image/png", meta=files.image_meta(raw))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+async def _seconds(ctx: Ctx, video: dict) -> float:
+    tmp = Path(tempfile.mkdtemp(prefix="loom-"))
+    try:
+        src = tmp / "in.mp4"
+        src.write_bytes(await ctx.read(video))
+        return video_tools.duration(await video_tools.probe(src))
+    except video_tools.VideoError:
+        return 0.0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
