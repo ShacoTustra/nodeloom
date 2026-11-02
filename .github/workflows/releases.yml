@@ -1,0 +1,26 @@
+# GitHub releases for the version tags: notes from CHANGELOG.md, files as PyPI has them. Runs once a release is on
+# PyPI (workflow.yml), on every push to main and by hand; it makes only the releases that are missing.
+name: GitHub releases
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the tags
+      - run: python3 .github/scripts/releases.py
+        env:
+          GH_TOKEN: ${{ github.token }}
