@@ -1,0 +1,286 @@
+{
+ "id": "d7b9f0b1-a1a6-5761-9015-931454b5f257",
+ "revision": 0,
+ "last_node_id": 2,
+ "last_link_id": 1,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "LoomText",
+   "pos": [
+    0,
+    0
+   ],
+   "size": [
+    380,
+    200
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "showAdvanced": null,
+   "inputs": [
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "text",
+     "locked": null,
+     "name": "value",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "STRING",
+     "widget": {
+      "name": "value"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "text",
+     "locked": null,
+     "name": "text",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "STRING",
+     "pos": null,
+     "slot_index": null,
+     "links": [
+      1
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoomText"
+   },
+   "widgets_values": [
+    "A ginger cat in an amber hat sits on a rooftop of an evening city, warm light of street lamps, cinematic shot"
+   ],
+   "widgets_values_named": {
+    "value": "A ginger cat in an amber hat sits on a rooftop of an evening city, warm light of street lamps, cinematic shot"
+   }
+  },
+  {
+   "id": 2,
+   "type": "LoomSeedreamImage",
+   "pos": [
+    440,
+    0
+   ],
+   "size": [
+    400,
+    252
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "showAdvanced": null,
+   "inputs": [
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "reference 1",
+     "locked": null,
+     "name": "references.reference 1",
+     "nameLocked": null,
+     "removable": null,
+     "shape": 7,
+     "type": "IMAGE",
+     "pos": null,
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "reference 2",
+     "locked": null,
+     "name": "references.reference 2",
+     "nameLocked": null,
+     "removable": null,
+     "shape": 7,
+     "type": "IMAGE",
+     "pos": null,
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "model",
+     "locked": null,
+     "name": "model",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "COMBO",
+     "widget": {
+      "name": "model"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "description",
+     "locked": null,
+     "name": "prompt",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "STRING",
+     "widget": {
+      "name": "prompt"
+     },
+     "link": 1
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "size",
+     "locked": null,
+     "name": "size",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "COMBO",
+     "widget": {
+      "name": "size"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "how many images",
+     "locked": null,
+     "name": "count",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "INT",
+     "widget": {
+      "name": "count"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "variant",
+     "locked": null,
+     "name": "seed",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "watermark",
+     "locked": null,
+     "name": "watermark",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "watermark"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "images",
+     "locked": null,
+     "name": "images",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "IMAGE",
+     "pos": null,
+     "slot_index": null,
+     "links": null
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoomSeedreamImage"
+   },
+   "widgets_values": [
+    "ark/dola-seedream-5-0-flash",
+    "The camera slowly pushes in, a light breeze, lively motion in the shot",
+    "2K",
+    1,
+    0,
+    "fixed",
+    false
+   ],
+   "widgets_values_named": {
+    "model": "ark/dola-seedream-5-0-flash",
+    "prompt": "The camera slowly pushes in, a light breeze, lively motion in the shot",
+    "size": "2K",
+    "count": 1,
+    "seed": 0,
+    "fixed": "fixed",
+    "watermark": false
+   }
+  }
+ ],
+ "links": [
+  [
+   1,
+   1,
+   0,
+   2,
+   3,
+   "STRING"
+  ]
+ ],
+ "floatingLinks": null,
+ "groups": [],
+ "definitions": null,
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 1.395348837209302,
+   "offset": [
+    153.33333333333337,
+    157.5
+   ]
+  },
+  "reroutes": null
+ },
+ "version": 0.4
+}

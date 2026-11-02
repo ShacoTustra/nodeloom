@@ -1,0 +1,65 @@
+[project]
+name = "nodeloom"
+version = "0.1.0"
+description = "ComfyUI's node editor for models behind APIs (OpenAI, OpenRouter, BytePlus ModelArk...): no local inference, no torch, no GPU"
+authors = [
+    { name = "Kirill Shamgunov" }
+]
+readme = "README.md"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+keywords = ["comfyui", "node editor", "workflow", "openai", "seedance", "seedream", "generative ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "comfyui-frontend-package==1.52.7",
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "pillow>=11",
+    "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.20",
+    "redis>=5.2",
+    "sqlalchemy[asyncio]>=2",
+    "uvicorn[standard]>=0.53.0",
+]
+
+[project.optional-dependencies]
+postgres = ["asyncpg>=0.31.0"]
+s3 = ["boto3>=1.35"]
+
+[project.scripts]
+nodeloom = "nodeloom.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "fakeredis>=2.26",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
+    "ruff>=0.9",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["F", "E9", "B", "I"]
+ignore = ["B008"]  # FastAPI's Depends() in defaults is the idiom

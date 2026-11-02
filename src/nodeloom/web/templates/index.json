@@ -1,0 +1,123 @@
+[
+ {
+  "moduleName": "default",
+  "title": "Start",
+  "type": "image",
+  "templates": [
+   {
+    "name": "idea-image-video",
+    "title": "Idea, image, video",
+    "description": "A text model turns an idea into a description, an image is drawn from it and comes alive in a video.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Video"
+    ]
+   },
+   {
+    "name": "text-to-image",
+    "title": "Image from a description",
+    "description": "Write what the image should show and run it.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Image"
+    ]
+   },
+   {
+    "name": "image-to-video",
+    "title": "Image to video",
+    "description": "Upload an image: it becomes the first frame of the video.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Video"
+    ]
+   }
+  ]
+ },
+ {
+  "moduleName": "default",
+  "title": "Images",
+  "type": "image",
+  "templates": [
+   {
+    "name": "describe-image",
+    "title": "Describe an image",
+    "description": "The model describes an uploaded image: a ready text for a new generation.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Image"
+    ]
+   },
+   {
+    "name": "references-to-image",
+    "title": "Character from references",
+    "description": "The same character in a new scene: connect their image and an image of the place or the style.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Image"
+    ]
+   },
+   {
+    "name": "gpt-text-to-image",
+    "title": "Image from a description (GPT Image)",
+    "description": "Write what the image should show and run it.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Image"
+    ]
+   },
+   {
+    "name": "gpt-references-to-image",
+    "title": "Character from references (GPT Image)",
+    "description": "The same character in a new scene: connect their image and an image of the place or the style.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Image"
+    ]
+   }
+  ]
+ },
+ {
+  "moduleName": "default",
+  "title": "Video",
+  "type": "image",
+  "templates": [
+   {
+    "name": "character-video",
+    "title": "Video with a character",
+    "description": "A ready character from the library becomes the first frame: the same face in every clip. Press “Choose a character” to take another one.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Video"
+    ]
+   },
+   {
+    "name": "first-last-frame-video",
+    "title": "Video between two frames",
+    "description": "Upload the first and the last frame: the model films the transition between them.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Video"
+    ]
+   },
+   {
+    "name": "two-scenes",
+    "title": "A film of two scenes",
+    "description": "The second scene starts from the last frame of the first, then the scenes are joined into one video.",
+    "mediaType": "image",
+    "mediaSubtype": "jpg",
+    "tags": [
+     "Video"
+    ]
+   }
+  ]
+ }
+]

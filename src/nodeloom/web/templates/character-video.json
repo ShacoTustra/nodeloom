@@ -1,0 +1,357 @@
+{
+ "id": "5b1f9a3e-7c2d-5e8a-9f41-0c6d2a8e7b13",
+ "revision": 0,
+ "last_node_id": 2,
+ "last_link_id": 1,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "LoomSeedanceCharacter",
+   "pos": [
+    0,
+    0
+   ],
+   "size": [
+    420,
+    400
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "showAdvanced": null,
+   "inputs": [
+    {
+     "localized_name": "character",
+     "name": "character",
+     "type": "STRING",
+     "widget": {
+      "name": "character"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "character",
+     "name": "character",
+     "type": "IMAGE",
+     "links": [
+      1
+     ]
+    }
+   ],
+   "title": "Character: Woman, 30, Student, Australia",
+   "properties": {
+    "Node name for S&R": "LoomSeedanceCharacter"
+   },
+   "widgets_values": [
+    "asset-20260410175549-gc7jj",
+    null,
+    ""
+   ],
+   "widgets_values_named": {
+    "character": "asset-20260410175549-gc7jj",
+    "Pick a character": null,
+    "preview": ""
+   }
+  },
+  {
+   "id": 2,
+   "type": "LoomSeedanceVideo",
+   "pos": [
+    500,
+    0
+   ],
+   "size": [
+    400,
+    340
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "showAdvanced": null,
+   "inputs": [
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "first frame",
+     "locked": null,
+     "name": "first_frame",
+     "nameLocked": null,
+     "removable": null,
+     "shape": 7,
+     "type": "IMAGE",
+     "pos": null,
+     "link": 1
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "last frame",
+     "locked": null,
+     "name": "last_frame",
+     "nameLocked": null,
+     "removable": null,
+     "shape": 7,
+     "type": "IMAGE",
+     "pos": null,
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "reference 1",
+     "locked": null,
+     "name": "references.reference 1",
+     "nameLocked": null,
+     "removable": null,
+     "shape": 7,
+     "type": "IMAGE",
+     "pos": null,
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "reference 2",
+     "locked": null,
+     "name": "references.reference 2",
+     "nameLocked": null,
+     "removable": null,
+     "shape": 7,
+     "type": "IMAGE",
+     "pos": null,
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "model",
+     "locked": null,
+     "name": "model",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "COMBO",
+     "widget": {
+      "name": "model"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "description",
+     "locked": null,
+     "name": "prompt",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "STRING",
+     "widget": {
+      "name": "prompt"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "quality",
+     "locked": null,
+     "name": "resolution",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "COMBO",
+     "widget": {
+      "name": "resolution"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "aspect ratio",
+     "locked": null,
+     "name": "ratio",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "COMBO",
+     "widget": {
+      "name": "ratio"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "seconds",
+     "locked": null,
+     "name": "duration",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "INT",
+     "widget": {
+      "name": "duration"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "sound",
+     "locked": null,
+     "name": "sound",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "sound"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "variant",
+     "locked": null,
+     "name": "seed",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "watermark",
+     "locked": null,
+     "name": "watermark",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "watermark"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "video",
+     "locked": null,
+     "name": "video",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "VIDEO",
+     "pos": null,
+     "slot_index": null,
+     "links": null
+    },
+    {
+     "color_off": null,
+     "color_on": null,
+     "dir": null,
+     "label": null,
+     "localized_name": "last frame",
+     "locked": null,
+     "name": "last frame",
+     "nameLocked": null,
+     "removable": null,
+     "shape": null,
+     "type": "IMAGE",
+     "pos": null,
+     "slot_index": null,
+     "links": null
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoomSeedanceVideo"
+   },
+   "widgets_values": [
+    "ark/dreamina-seedance-2-0-fast",
+    "A young woman smiles and waves at the camera, a sunny university courtyard, a light breeze in her hair",
+    "720p",
+    "adaptive",
+    5,
+    true,
+    0,
+    "fixed",
+    false
+   ],
+   "widgets_values_named": {
+    "model": "ark/dreamina-seedance-2-0-fast",
+    "prompt": "A young woman smiles and waves at the camera, a sunny university courtyard, a light breeze in her hair",
+    "resolution": "720p",
+    "ratio": "adaptive",
+    "duration": 5,
+    "sound": true,
+    "seed": 0,
+    "fixed": "fixed",
+    "watermark": false
+   }
+  }
+ ],
+ "links": [
+  [
+   1,
+   1,
+   0,
+   2,
+   0,
+   "IMAGE"
+  ]
+ ],
+ "floatingLinks": null,
+ "groups": [],
+ "definitions": null,
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.6741573033707864,
+   "offset": [
+    306.66666666666674,
+    351.5
+   ]
+  },
+  "reroutes": null
+ },
+ "version": 0.4
+}

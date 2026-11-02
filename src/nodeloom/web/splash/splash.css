@@ -1,0 +1,30 @@
+/* The loading screen over the editor while it starts: the mark, the name and a running bar; it fades out once the
+   editor is ready (splash.js). Scoped to #loom-splash, so nothing leaks into the editor. */
+#loom-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #121212;
+  color: #e6e6e6;
+  font: 500 18px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: opacity 0.4s ease;
+}
+html.loom-gone #loom-splash { opacity: 0; pointer-events: none; }
+/* the editor's own splash stays in the page (the app removes it when ready) but is not shown */
+#splash-loader { visibility: hidden; }
+.loom-splash-box { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.loom-splash-mark { width: 72px; height: 72px; }
+.loom-splash-link { stroke-dasharray: 40; animation: loom-splash-link 1.4s ease-in-out infinite alternate; }
+.loom-splash-bar { position: relative; width: 160px; height: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.1); }
+.loom-splash-bar span {
+  position: absolute; top: 0; bottom: 0; width: 40%; background: #4f8cff;
+  animation: loom-splash-bar 1.2s ease-in-out infinite;
+}
+@keyframes loom-splash-link { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
+@keyframes loom-splash-bar { from { left: -40%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .loom-splash-link, .loom-splash-bar span { animation: none; }
+}

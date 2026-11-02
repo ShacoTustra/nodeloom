@@ -1,0 +1,10 @@
+{
+  "Comfy.TutorialCompleted": true,
+  "Comfy.Workflow.ShowMissingModelsWarning": false,
+  "Comfy.NodeReplacement.Enabled": false,
+  "Comfy.Release.Status": "skipped",
+  "Comfy.NodeBadge.NodeSourceBadgeMode": "None",
+  "Comfy.Minimap.Visible": false,
+  "Comfy.VueNodes.Enabled": true,
+  "Comfy.Graph.CanvasInfo": false
+}

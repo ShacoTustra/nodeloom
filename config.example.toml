@@ -1,0 +1,45 @@
+# Nodeloom: config.toml in the working directory or the data directory (or `nodeloom --config path`).
+# Environment variables win over this file. Every section is optional.
+
+# ---------------------------------------------------------------- providers
+# type = "openai": the OpenAI API and what speaks it. type = "ark": BytePlus ModelArk / Volcengine Ark.
+# OPENAI_API_KEY, OPENROUTER_API_KEY and ARK_API_KEY alone also create "openai", "openrouter" and "ark".
+
+[providers.openai]
+type = "openai"
+base_url = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"        # or api_key = "sk-..."
+# Without `models`, the list comes from GET /models (asked again every 10 minutes). A list of ids limits it:
+# models = ["gpt-5-mini", "gpt-image-1"]
+
+# Settings for some models, or models the list does not have. kind: chat | image | video; inputs: what a chat model
+# takes besides text (image, audio, video); price: US$ per million tokens (input, output, image_input) or per
+# generated image (image). Without a price the cost of a run is not shown in full.
+[providers.openai.extra_models."gpt-image-1"]
+price = { input = 5.0, image_input = 10.0, output = 40.0 }
+
+[providers.openrouter]
+type = "openai"
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+models = ["google/gemini-2.5-flash", "anthropic/claude-sonnet-4.5"]   # OpenRouter lists hundreds: pick yours
+
+[providers.local]
+type = "openai"
+base_url = "http://localhost:11434/v1"   # Ollama; LM Studio: http://localhost:1234/v1
+models = ["llama3.2"]
+
+[providers.ark]
+type = "ark"
+base_url = "https://ark.ap-southeast.bytepluses.com/api/v3"
+api_key_env = "ARK_API_KEY"
+# ModelArk needs dated model ids (dreamina-seedance-2-0-260128); its GET /models lists them.
+
+[providers.ark.extra_models."dreamina-seedance-2-0-260128"]
+price = { output = 7.0 }                 # Seedance is billed by video tokens
+
+# ---------------------------------------------------------------- everything else (see the README)
+# storage_limit_mb = 2048
+# agent_model = "openai/gpt-5-mini"
+# language = "en"
+# allowed_hosts = ["localhost", "127.0.0.1", "::1", "studio.example.com"]

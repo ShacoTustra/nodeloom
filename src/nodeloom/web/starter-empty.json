@@ -1,0 +1,23 @@
+{
+ "id": "5c2b8f8e-1f0e-4d43-9a57-0e6f3c1b7a10",
+ "revision": 0,
+ "last_node_id": 0,
+ "last_link_id": 0,
+ "nodes": [],
+ "links": [],
+ "floatingLinks": null,
+ "groups": [],
+ "definitions": null,
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.8766233766233765,
+   "offset": [
+    492.5925925925926,
+    168.33333333333337
+   ]
+  },
+  "reroutes": null
+ },
+ "version": 0.4
+}

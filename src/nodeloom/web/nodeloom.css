@@ -1,0 +1,133 @@
+/* Our part of the editor's look, over the stock ComfyUI frontend and its own themes: what is left out of the UI,
+   the Builder's panel and the character picker. Our components take the editor's own colours (its CSS variables),
+   so they follow the theme the user picks. */
+
+/* The frontend ships Inter for Latin only: Cyrillic in places that name "Inter" alone would fall back to a serif. */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 100 900;
+  font-display: swap;
+  src: local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), local('Arial');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+:root {
+  --loom-accent: var(--p-primary-color, #4f8cff);
+  --loom-accent-fg: var(--p-primary-contrast-color, #fff);
+  --loom-bg: var(--comfy-menu-bg, #1e1e1e);
+  --loom-surface: var(--comfy-input-bg, #222);
+  --loom-fg: var(--fg-color, #fff);
+  --loom-muted: var(--descrip-text, #999);
+  --loom-line: var(--border-color, #4e4e4e);
+  --loom-danger: var(--error-text, #ff4444);
+}
+
+/* Not part of this editor: Comfy account sign-in (user menu), help centre, settings (sidebar button and main
+   menu entry), extension manager and help links in the main menu. The commands behind them are disabled in nodeloom.js.
+   Labels are matched in English and Russian (the frontend's own locale strings for the same keys). */
+button:has(.icon-\[lucide--user\]),
+button:has(.pi-question-circle),
+button.side-bar-button[aria-label^="Настройки"],
+button.side-bar-button[aria-label^="Settings"],
+li[role="menuitem"]:is([aria-label="Настройки"], [aria-label="Settings"], [aria-label="Управление расширениями"],
+  [aria-label="Manage Extensions"], [aria-label="Помощь"], [aria-label="Help"]) {
+  display: none !important;
+}
+
+/* Also left out, as nothing here needs them (the commands are disabled in nodeloom.js):
+   - run bar: the batch count (runs with nothing changed reuse the results, so N runs give one result), the run
+     modes "on change" and "instant" (they rerun the graph every second), the properties panel;
+   - app mode (beta) and its builder, the bottom panel (ComfyUI's server logs, a terminal) and the keyboard
+     shortcuts panel;
+   - menu entries for local models, the clipspace, the API export, node bypass, subgraphs, node shapes and
+     ComfyUI's English duplicates of the node menu (Pin, Clone, Remove: deleting is the toolbar's bin or Delete). */
+[data-testid="action-bar-card"] :is(div:has(> input:is([aria-label="Количество пакетов"], [aria-label="Batch Count"])),
+  button:is([aria-label="Увеличить"], [aria-label="Increment"]), button:is([aria-label="Уменьшить"], [aria-label="Decrement"])),
+[data-testid="queue-mode-menu-trigger"],
+button:is([aria-label="Показать/скрыть панель свойств"], [aria-label="Toggle properties panel"]),
+button:is([aria-label="Войти в режим приложения"], [aria-label="Enter app mode"]),
+button.side-bar-button:is([aria-label^="Переключить нижнюю панель"], [aria-label^="Горячие клавиши"],
+  [aria-label^="Toggle Bottom Panel"], [aria-label^="Keyboard Shortcuts"], [aria-label^="Keybindings"]),
+li[role="menuitem"]:is([aria-label="Экспорт (API)"], [aria-label="Клиппространство"],
+  [aria-label="Обновить определения нод"], [aria-label="Выгрузить модели"],
+  [aria-label="Выгрузить модели и кэш выполнения"], [aria-label="Нижняя панель"],
+  [aria-label="Производительность холста"], [aria-label="Nodes 2.0"], [aria-label="Добавить в закладки"],
+  [aria-label="Войти в режим приложения"], [aria-label="Войти в режим конструктора приложения"],
+  [aria-label="Pin"], [aria-label="Unpin"], [aria-label="Convert to Subgraph"], [aria-label="Clone"],
+  [aria-label="Extensions"], [aria-label="Remove"], [aria-label="Закрепить"], [aria-label="Открепить"],
+  [aria-label="Обход"], [aria-label="Преобразовать в подграф"], [aria-label="Форма"],
+  [aria-label="Export (API)"], [aria-label="Clipspace"], [aria-label="Refresh Node Definitions"],
+  [aria-label="Unload Models"], [aria-label="Unload Models and Execution Cache"], [aria-label="Bottom Panel"],
+  [aria-label="Canvas Performance"], [aria-label="Add to Bookmarks"], [aria-label="Enter app mode"],
+  [aria-label="Build app"], [aria-label="Bypass"], [aria-label="Shape"]),
+.selection-toolbox button:is([aria-label="Преобразовать выделенное в подграф"],
+  [aria-label="Обход/Необход выбранных нод"], [aria-label="Обновить ноду"],
+  [aria-label="Convert Selection to Subgraph"], [aria-label="Bypass/Unbypass Selected Nodes"],
+  [aria-label="Refresh Node"]) {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------- "Seedance character": the character picker */
+.loom-pr-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, 0.7); }
+.loom-pr-dialog { display: flex; flex-direction: column; width: min(1040px, 100%); max-height: 100%; background: var(--loom-bg); border: 1px solid var(--loom-line); border-radius: 8px; color: var(--loom-fg); }
+.loom-pr-head { display: flex; justify-content: space-between; gap: 16px; padding: 20px 22px 12px; }
+.loom-pr-head h2 { margin: 0 0 4px; font-size: 20px; }
+.loom-pr-head p { margin: 0; font-size: 13px; color: var(--loom-muted); }
+.loom-pr-close { background: none; border: 0; color: var(--loom-muted); font-size: 26px; line-height: 1; cursor: pointer; }
+.loom-pr-close:hover { color: var(--loom-accent); }
+.loom-pr-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 22px 14px; border-bottom: 1px solid var(--loom-line); }
+.loom-pr-chip, .loom-pr-select, .loom-pr-search, .loom-pr-more { height: 32px; padding: 0 12px; background: var(--loom-surface); color: var(--loom-fg); border: 1px solid var(--loom-line); border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; }
+.loom-pr-chip.is-on { color: var(--loom-accent); border-color: var(--loom-accent); }
+.loom-pr-search { flex: 1 1 200px; min-width: 160px; cursor: text; }
+.loom-pr-select:focus, .loom-pr-search:focus { outline: none; border-color: var(--loom-accent); }
+.loom-pr-scroll { overflow: auto; padding: 16px 22px 22px; }
+.loom-pr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.loom-pr-card { display: flex; flex-direction: column; gap: 3px; padding: 0 0 10px; background: var(--loom-surface); border: 1px solid var(--loom-line); border-radius: 6px; overflow: hidden; color: var(--loom-fg); text-align: left; font: inherit; cursor: pointer; }
+.loom-pr-card:hover, .loom-pr-card:focus-visible { border-color: var(--loom-accent); outline: none; }
+.loom-pr-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: top; display: block; background: var(--loom-bg); margin-bottom: 6px; }
+.loom-pr-title { padding: 0 10px; font-size: 13px; font-weight: 600; }
+.loom-pr-sub { padding: 0 10px; font-size: 12px; color: var(--loom-muted); line-height: 1.35; }
+.loom-pr-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; font-size: 13px; color: var(--loom-muted); }
+.loom-pr-more:hover { color: var(--loom-accent); border-color: var(--loom-accent); }
+.loom-pr-note { color: var(--loom-muted); font-size: 13px; }
+.loom-pr-node { width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; background: var(--loom-surface); }
+.loom-pr-node-img { width: 100%; height: 100%; max-height: 240px; object-fit: contain; display: block; }
+.loom-pr-node-empty { color: var(--loom-muted); font-size: 12px; }
+
+/* ---------------------------------------------------------------- the Builder: the agent's side panel */
+/* its sidebar button stands apart, at the foot of the column. The editor renders the tab bar, so the move is CSS
+   only: the top group gives up its box and the button's auto margin takes the free space. */
+.side-tool-bar-container > div:has([data-testid="loom-agent-tab-button"]) { align-items: center; }
+.side-tool-bar-container .sidebar-item-group:has(> [data-testid="loom-agent-tab-button"]) { display: contents; }
+.side-tool-bar-container button[data-testid="loom-agent-tab-button"] {
+  order: 1; width: 36px; height: 36px; margin: auto 0 14px; padding: 0; border-radius: 8px;
+  background: var(--loom-accent); color: var(--loom-accent-fg);
+}
+.side-tool-bar-container button[data-testid="loom-agent-tab-button"]:hover { filter: brightness(1.1); }
+.side-tool-bar-container button[data-testid="loom-agent-tab-button"] :is(.side-bar-button-icon, .side-bar-button-label) {
+  color: var(--loom-accent-fg);
+}
+.side-tool-bar-container button[data-testid="loom-agent-tab-button"] .side-bar-button-icon { font-size: 16px; }
+.side-tool-bar-container button[data-testid="loom-agent-tab-button"].side-bar-button-selected {
+  box-shadow: 0 0 0 2px var(--loom-bg), 0 0 0 3px var(--loom-accent);
+}
+.side-tool-bar-container:not(.small-sidebar) button[data-testid="loom-agent-tab-button"] {
+  width: 64px; height: auto; padding: 8px 0 7px;
+}
+.side-tool-bar-container:not(.small-sidebar) button[data-testid="loom-agent-tab-button"] .side-bar-button-content { gap: 5px; }
+.loom-ag { display: flex; flex-direction: column; height: 100%; font-size: 13px; }
+.loom-ag-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--loom-line); }
+.loom-ag-title { font-weight: 600; }
+.loom-ag-reset { background: none; border: 0; color: var(--loom-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.loom-ag-reset:hover { color: var(--loom-accent); }
+.loom-ag-list { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.loom-ag-hint { color: var(--loom-muted); line-height: 1.55; }
+.loom-ag-msg { line-height: 1.5; white-space: pre-wrap; }
+.loom-ag-msg.is-user { align-self: flex-end; max-width: 90%; padding: 8px 10px; background: var(--loom-surface); border: 1px solid var(--loom-line); border-radius: 8px; }
+.loom-ag-steps { color: var(--loom-muted); font-size: 12px; margin-bottom: 4px; }
+.loom-ag-error { color: var(--loom-danger); }
+.loom-ag-compose { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--loom-line); }
+.loom-ag-input { resize: vertical; min-height: 64px; padding: 8px 10px; background: var(--loom-surface); color: var(--loom-fg); border: 1px solid var(--loom-line); border-radius: 6px; font: inherit; }
+.loom-ag-input:focus { outline: none; border-color: var(--loom-accent); }
+.loom-ag-send { align-self: flex-end; padding: 7px 16px; background: var(--loom-accent); color: var(--loom-accent-fg); border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+.loom-ag-send:disabled { opacity: 0.5; cursor: default; }

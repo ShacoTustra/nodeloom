@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+*.db
+*.db-shm
+*.db-wal
+media/
+dist/
+config.toml
+data/
