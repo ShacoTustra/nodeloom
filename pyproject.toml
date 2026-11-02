@@ -1,7 +1,7 @@
 [project]
 name = "nodeloom"
 version = "0.1.0"
-description = "ComfyUI's node editor for models behind APIs (OpenAI, OpenRouter, BytePlus ModelArk...): no local inference, no torch, no GPU"
+description = "ComfyUI's node editor for models behind APIs (OpenAI, Gemini, OpenRouter, fal.ai, Replicate, ModelArk...): no local inference, no torch, no GPU"
 authors = [
     { name = "Kirill Shamgunov" }
 ]
@@ -9,7 +9,8 @@ readme = "README.md"
 license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
-keywords = ["comfyui", "node editor", "workflow", "openai", "seedance", "seedream", "generative ai"]
+keywords = ["comfyui", "comfyui-lite", "node editor", "workflow", "generative ai", "openai", "gemini", "openrouter", "fal",
+            "replicate", "seedance", "nano banana"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",
@@ -17,6 +18,9 @@ classifiers = [
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Graphics",
 ]
 dependencies = [

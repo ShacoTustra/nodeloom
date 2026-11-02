@@ -1,8 +1,21 @@
-# Nodeloom
+<p align="center"><img src="https://raw.githubusercontent.com/ShacoTustra/nodeloom/main/src/nodeloom/web/mark.svg" width="88" alt=""></p>
 
-*aka ComfyUI Lite*
+<h1 align="center">Nodeloom</h1>
+
+<p align="center"><em>aka ComfyUI Lite</em></p>
+
+<p align="center">
+  <a href="https://github.com/ShacoTustra/nodeloom/actions/workflows/ci.yml"><img src="https://github.com/ShacoTustra/nodeloom/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/nodeloom/"><img src="https://img.shields.io/pypi/v/nodeloom" alt="PyPI"></a>
+  <a href="https://pypi.org/project/nodeloom/"><img src="https://img.shields.io/pypi/pyversions/nodeloom" alt="Python"></a>
+  <a href="https://github.com/ShacoTustra/nodeloom/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0"></a>
+</p>
 
 **ComfyUI's node editor for models behind APIs.** Build workflows that chain text, image, video and voice models (OpenAI, Google Gemini, OpenRouter, fal.ai, Replicate, BytePlus ModelArk and anything that speaks the OpenAI API) on the canvas you know from ComfyUI, without local inference: no torch, no CUDA, no model downloads, no GPU. It installs in seconds and runs on a laptop or a small server.
+
+![An idea, a prompt written by Gemini, a picture by Nano Banana and a video by Seedance, on the ComfyUI canvas](https://raw.githubusercontent.com/ShacoTustra/nodeloom/main/docs/images/hero.png)
+
+<sub>An idea → Gemini writes the prompt → Nano Banana draws it → Seedance animates it. This is the second run of the graph: every result is reused, nothing is paid twice.</sub>
 
 Think of it as "ComfyUI Lite". It is an independent project, not affiliated with Comfy Org. The editor in the browser is the official ComfyUI frontend ([ComfyUI_frontend](https://github.com/Comfy-Org/ComfyUI_frontend), the `comfyui-frontend-package` wheel, unchanged); the backend is a new, small server that speaks the part of ComfyUI's protocol the frontend uses.
 
@@ -17,6 +30,8 @@ ComfyUI is a great editor, but it comes with a local inference stack. If all you
 - **Costs.** After a run, the editor tells you what it cost, per node (from the provider's usage and the model's price).
 - **The Builder.** A side panel where you describe what you want ("a product shot on white, then a 5-second video of it") and an LLM builds the graph for you. Nothing runs until you press Run.
 - **English and Russian** UI, including the nodes.
+
+![The Builder: a request in plain words becomes a graph of nodes](https://raw.githubusercontent.com/ShacoTustra/nodeloom/main/docs/images/builder.gif)
 
 ## Quick start
 
@@ -53,7 +68,7 @@ The common ones need only an environment variable:
 | `REPLICATE_API_TOKEN` | Replicate | a node per model: Flux Schnell, Flux 2 Pro, Flux Kontext Pro, Nano Banana Pro, Seedream 4, Ideogram v3 Turbo, Recraft v3, Kling 2.5 Turbo Pro, Hailuo 02, Veo 3 Fast, Wan 2.5 I2V, Speech 02 Turbo |
 | `ARK_API_KEY` (`ARK_BASE_URL`) | BytePlus ModelArk (Volcengine Ark with its own base URL) | Text model, Seedream image, Seedance video, Seedance character |
 
-Anything else goes into `config.toml` (in the working directory or the data directory, or `--config path`). See [`config.example.toml`](config.example.toml):
+Anything else goes into `config.toml` (in the working directory or the data directory, or `--config path`). See [`config.example.toml`](https://github.com/ShacoTustra/nodeloom/blob/main/config.example.toml):
 
 ```toml
 [providers.local]
@@ -136,7 +151,7 @@ uv run pytest          # providers are mocked; the video tests need ffmpeg
 uv run nodeloom
 ```
 
-How it works inside: [docs/architecture.md](docs/architecture.md).
+How it works inside: [docs/architecture.md](https://github.com/ShacoTustra/nodeloom/blob/main/docs/architecture.md).
 
 ## Status
 
