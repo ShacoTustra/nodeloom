@@ -23,14 +23,17 @@ ComfyUI is a great editor, but it comes with a local inference stack. If all you
 Requires Python 3.12+ and, for the video tools, `ffmpeg` on the PATH.
 
 ```bash
-pip install nodeloom                # or: uvx nodeloom
+pip install git+https://github.com/ShacoTustra/nodeloom    # not on PyPI yet
 export OPENAI_API_KEY=sk-...        # and/or OPENROUTER_API_KEY, FAL_KEY, ARK_API_KEY
 nodeloom --open                     # http://127.0.0.1:8188
 ```
 
+or, without installing: `uvx --from git+https://github.com/ShacoTustra/nodeloom nodeloom --open`.
+
 Or with Docker:
 
 ```bash
+git clone https://github.com/ShacoTustra/nodeloom && cd nodeloom
 docker build -t nodeloom .
 docker run -p 8188:8188 -e OPENAI_API_KEY=sk-... -v nodeloom:/data nodeloom
 ```

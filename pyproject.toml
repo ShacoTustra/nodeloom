@@ -39,6 +39,10 @@ s3 = ["boto3>=1.35"]
 [project.scripts]
 nodeloom = "nodeloom.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/ShacoTustra/nodeloom"
+Issues = "https://github.com/ShacoTustra/nodeloom/issues"
+
 [build-system]
 requires = ["uv_build>=0.9.5,<0.10.0"]
 build-backend = "uv_build"
